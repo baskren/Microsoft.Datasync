@@ -15,25 +15,28 @@ namespace Microsoft.Datasync.Client
         /// The item globally unique ID.
         /// </summary>
         [JsonProperty("id")]
-        public string Id { get; set; }
+        public virtual string Id { get; set; }
 
         /// <summary>
         /// If set to true, the item is deleted.
         /// </summary>
         [JsonProperty("deleted")]
-        public bool Deleted { get; set; } = false;
+        public virtual bool Deleted { get; set; } = false;
 
         /// <summary>
         /// The last time that the record was updated.
         /// </summary>
         [JsonProperty("updatedAt")]
-        public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.MinValue;
+        public virtual DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.MinValue;
 
         /// <summary>
         /// The opaque version string.  This changes when the
         /// item is updated.
         /// </summary>
         [JsonProperty("version")]
-        public string Version { get; set; }
+        public virtual string Version { get; set; }
+
+
+
     }
 }

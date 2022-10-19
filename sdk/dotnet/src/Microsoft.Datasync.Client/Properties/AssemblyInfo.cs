@@ -9,3 +9,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Microsoft.Datasync.Client.InMemoryStore.Test")]
 [assembly: InternalsVisibleTo("Microsoft.Datasync.Integration.Test")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+[assembly: InternalsVisibleTo("TMNA.Datasync.Client.Extensions")]

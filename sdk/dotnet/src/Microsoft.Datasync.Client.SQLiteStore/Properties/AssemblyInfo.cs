@@ -6,3 +6,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Microsoft.Datasync.Client.SQLiteStore.Test")]
 [assembly: InternalsVisibleTo("Microsoft.Datasync.Integration.Test")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+[assembly: InternalsVisibleTo("TMNA.Datasync.Client.Extensions")]
