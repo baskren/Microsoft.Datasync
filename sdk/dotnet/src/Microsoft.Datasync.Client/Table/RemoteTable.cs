@@ -179,21 +179,46 @@ namespace Microsoft.Datasync.Client.Table
             };
             var response = await SendRequestAsync(request, cancellationToken).ConfigureAwait(false);
             var result = new Page<JToken>();
+            if (response is JArray array)
+                response = array[0];
+
             if (response is JObject)
             {
-                if (response[Page.JsonItemsProperty]?.Type == JTokenType.Array)
+                if (response[Page.OdataItemsProperty] is JArray itemsArray)
+                {
+                    result.Items = itemsArray.ToList();
+                }
+                else if (response[Page.JsonItemsProperty]?.Type == JTokenType.Array)
                 {
                     result.Items = ((JArray)response[Page.JsonItemsProperty] as JArray).ToList();
                 }
-                if (response[Page.JsonCountProperty]?.Type == JTokenType.Integer)
+                
+                if (response[Page.OdataCountProperty]?.Type == JTokenType.Integer)
+                {
+                    result.Count = response.Value<long>(Page.OdataCountProperty);
+                }
+                else if (response[Page.JsonCountProperty]?.Type == JTokenType.Integer)
                 {
                     result.Count = response.Value<long>(Page.JsonCountProperty);
                 }
-                if (response[Page.JsonNextLinkProperty]?.Type == JTokenType.String)
+
+                if (response[Page.OdataNextLinkProperty]?.Type == JTokenType.String)
+                {
+                    result.NextLink = new Uri(response.Value<string>(Page.OdataNextLinkProperty));
+                }
+                else if (response[Page.JsonNextLinkProperty]?.Type == JTokenType.String)
                 {
                     result.NextLink = new Uri(response.Value<string>(Page.JsonNextLinkProperty));
                 }
             }
+            /*
+            else if (response is JArray array)
+            {
+                result.Items = array.ToList();
+                result.Count = array.Count;
+                //result.NextLink = array.Next;
+            }
+            */
             return result;
         }
 

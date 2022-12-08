@@ -48,7 +48,11 @@ namespace Microsoft.Datasync.Client.Serialization
         /// Indicates if the property names should be camel-cased when serialized
         /// out of JSON.
         /// </summary>
-        internal bool CamelCasePropertyNames { get; set; } = true;
+        internal bool CamelCasePropertyNames 
+        { 
+            get; 
+            set; 
+        } = true;
 
         /// <summary>
         /// Creates the <see cref="IValueProvider"/> used by the serializer to get and set values from a member.

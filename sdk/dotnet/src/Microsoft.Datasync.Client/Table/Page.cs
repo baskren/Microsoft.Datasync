@@ -14,6 +14,9 @@ namespace Microsoft.Datasync.Client.Table
         internal const string JsonCountProperty = "count";
         internal const string JsonItemsProperty = "items";
         internal const string JsonNextLinkProperty = "nextLink";
+        internal const string OdataCountProperty = "@odata.count";
+        internal const string OdataItemsProperty = "value";
+        internal const string OdataNextLinkProperty = "@odata.nextLink";
     }
 
     /// <summary>
