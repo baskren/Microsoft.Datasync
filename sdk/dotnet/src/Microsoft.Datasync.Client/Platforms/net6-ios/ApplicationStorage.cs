@@ -2,7 +2,8 @@
 // Licensed under the MIT License.
 
 using Microsoft.Datasync.Client.Utils;
-using Microsoft.Maui.Storage;
+//using Microsoft.Maui.Storage;
+using Xamarin.Essentials;
 
 namespace Microsoft.Datasync.Client.Platforms
 {
