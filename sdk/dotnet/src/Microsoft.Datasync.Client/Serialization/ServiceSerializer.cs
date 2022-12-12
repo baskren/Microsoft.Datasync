@@ -268,9 +268,14 @@ namespace Microsoft.Datasync.Client.Serialization
         public static bool TryGetId(JObject instance, bool ignoreCase, out string id)
         {
             StringComparison comparator = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-            bool hasId = instance.TryGetValue(SystemProperties.JsonIdProperty, comparator, out JToken idToken);
-            id = (hasId && idToken is JValue idValue && idValue.Type == JTokenType.String) ? idValue.Value<string>() : null;
-            return hasId && id != null;
+            if (instance.TryGetValue(SystemProperties.JsonIdProperty, comparator, out JToken idToken) && 
+                idToken is JValue idValue)
+            {
+                id = idValue.ToString();
+                return id != null;
+            }
+            id = null;
+            return false;
         }
     }
 }
