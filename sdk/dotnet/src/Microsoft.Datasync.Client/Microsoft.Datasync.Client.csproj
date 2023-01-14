@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<!--
-		<TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst;net6.0-windows10.0.19041.0;netstandard2.0;monoandroid12.0;xamarin.ios10</TargetFrameworks>
+		<TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst;net6.0-windows10.0.19041.0;net6.0;netstandard2.0;monoandroid12.0;xamarin.ios10</TargetFrameworks>
 		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">$(TargetFrameworks);uap10.0</TargetFrameworks>
 		-->
 		<TargetFrameworks>net6.0;net6.0-android;net6.0-ios;net6.0-maccatalyst;net6.0-windows10.0.19041.0</TargetFrameworks>
@@ -28,7 +28,7 @@
 	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
 		<DebugSymbols>true</DebugSymbols>
 	</PropertyGroup>
-
+	
 	<PropertyGroup Condition="$(TargetFramework.StartsWith('net6.0-'))">
 		<UseMauiEssentials>false</UseMauiEssentials>
 		<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">10.0</SupportedOSPlatformVersion>
@@ -51,7 +51,6 @@
 		<!--
 		<PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
 		-->
-		<ProjectReference Include="..\..\..\..\..\P42.Uno.Xamarin.Essentials\Xamarin.Essentials\P42.Uno.Xamarin.Essentials.csproj" />
 		<PackageReference Include="Xamarin.AndroidX.Browser" Version="1.3.0.10" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
 	</ItemGroup>
@@ -66,7 +65,6 @@
 		<!--
 		<PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
 		-->
-	  <ProjectReference Include="..\..\..\..\..\P42.Uno.Xamarin.Essentials\Xamarin.Essentials\P42.Uno.Xamarin.Essentials.csproj" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
 	</ItemGroup>
 
@@ -93,7 +91,13 @@
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-windows'))">
 		<Compile Include="Platforms\net6-windows\*.cs" />
 	</ItemGroup>
-
+	
+	<!-- .NET 6.0 Platform support -->
+	<ItemGroup Condition="$(TargetFramework.Equals('net6.0'))">
+		<Compile Include="Platforms\net6\*.cs" />
+		<PackageReference Include="Microsoft.JSInterop" Version="6.0.12" />
+	</ItemGroup>
+		
 	<!-- .NET Standard 2.0 Platform Support -->
 	<ItemGroup Condition="$(TargetFramework) == 'net6.0'">
 		<Compile Include="Platforms\netstandard\*.cs" />
