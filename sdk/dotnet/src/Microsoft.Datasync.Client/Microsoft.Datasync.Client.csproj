@@ -2,10 +2,10 @@
 
 	<PropertyGroup>
 		<!--
-		<TargetFrameworks>net6.0-android;net6.0-ios;net6.0-maccatalyst;net6.0-windows10.0.19041.0;net6.0;netstandard2.0;monoandroid12.0;xamarin.ios10</TargetFrameworks>
+		<TargetFrameworks>net7.0-android;net7.0-ios;net7.0-maccatalyst;net7.0-windows10.0.19041.0;net7.0;netstandard2.0;monoandroid12.0;xamarin.ios10</TargetFrameworks>
 		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">$(TargetFrameworks);uap10.0</TargetFrameworks>
 		-->
-		<TargetFrameworks>net6.0;net6.0-android;net6.0-ios;net6.0-maccatalyst;net6.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks>net7.0;net7.0-android;net7.0-ios;net7.0-maccatalyst;net7.0-windows10.0.19041.0</TargetFrameworks>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -29,7 +29,7 @@
 		<DebugSymbols>true</DebugSymbols>
 	</PropertyGroup>
 	
-	<PropertyGroup Condition="$(TargetFramework.StartsWith('net6.0-'))">
+	<PropertyGroup Condition="$(TargetFramework.StartsWith('net7.0-'))">
 		<UseMauiEssentials>false</UseMauiEssentials>
 		<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">10.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-tvos'))">10.0</SupportedOSPlatformVersion>
@@ -46,38 +46,26 @@
 	</ItemGroup>
 
 	<!-- Android Platform Support -->
+	<!--
 	<ItemGroup Condition="$(TargetFramework.StartsWith('monoandroid'))">
 		<Compile Include="Platforms\android\*.cs" />
-		<!--
 		<PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
-		-->
 		<PackageReference Include="Xamarin.AndroidX.Browser" Version="1.3.0.10" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
 	</ItemGroup>
-
-	<ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-android'))">
-		<Compile Include="Platforms\net6-android\*.cs" />
-	</ItemGroup>
+	-->
 
 	<!-- iOS Platform Support -->
+	<!--
 	<ItemGroup Condition="$(TargetFramework.StartsWith('xamarin.ios'))">
 		<Compile Include="Platforms\ios\*.cs" />
-		<!--
 		<PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
-		-->
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
 	</ItemGroup>
-
-	<ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-ios'))">
-		<Compile Include="Platforms\net6-ios\*.cs" />
-	</ItemGroup>
-
-	<!-- Mac Platform Support -->
-	<ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-mac'))">
-		<Compile Include="Platforms\net6-mac\*.cs" />
-	</ItemGroup>
+	-->
 
 	<!-- UWP/UAP/Windows Store Platform Support -->
+	<!--
 	<PropertyGroup Condition="$(TargetFramework.StartsWith('uap10.0'))">
 		<TargetPlatformVersion>10.0.19041.0</TargetPlatformVersion>
 		<TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
@@ -87,19 +75,36 @@
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
 	</ItemGroup>
+	-->
 
-	<ItemGroup Condition="$(TargetFramework.StartsWith('net6.0-windows'))">
+	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-android'))">
+		<Compile Include="Platforms\net6-android\*.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-ios'))">
+		<Compile Include="Platforms\net6-ios\*.cs" />
+	</ItemGroup>
+
+	<!-- Mac Platform Support -->
+	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-mac'))">
+		<Compile Include="Platforms\net6-mac\*.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-windows'))">
 		<Compile Include="Platforms\net6-windows\*.cs" />
 	</ItemGroup>
 	
-	<!-- .NET 6.0 Platform support -->
-	<ItemGroup Condition="$(TargetFramework.Equals('net6.0'))">
+	<!-- .NET 7.0 Platform support -->
+	<!-- IS THIS BLAZOR / WASM ??? 
+	<ItemGroup Condition="$(TargetFramework.Equals('net7.0'))">
 		<Compile Include="Platforms\net6\*.cs" />
 		<PackageReference Include="Microsoft.JSInterop" Version="6.0.12" />
 	</ItemGroup>
-		
+	-->
+
 	<!-- .NET Standard 2.0 Platform Support -->
-	<ItemGroup Condition="$(TargetFramework) == 'net6.0'">
+	<!-- IS THIS .NET STD (.NET7)? -->
+	<ItemGroup Condition="$(TargetFramework) == 'net7.0'">
 		<Compile Include="Platforms\netstandard\*.cs" />
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
