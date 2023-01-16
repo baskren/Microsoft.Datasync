@@ -113,8 +113,6 @@
 	<!-- Common package requirements -->
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\..\..\..\..\P42.Uno.Xamarin.Essentials\Xamarin.Essentials\P42.Uno.Xamarin.Essentials.csproj" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.6.39"/>
 	</ItemGroup>
 </Project>
