@@ -1,13 +1,8 @@
 ﻿<Project Sdk="MSBuild.Sdk.Extras/3.0.44">
 
 	<PropertyGroup>
-		<!--
-		<TargetFrameworks>net7.0-android;net7.0-ios;net7.0-maccatalyst;net7.0-windows10.0.19041.0;net7.0;netstandard2.0;monoandroid12.0;xamarin.ios10</TargetFrameworks>
-		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">$(TargetFrameworks);uap10.0</TargetFrameworks>
-		-->
-		<TargetFrameworks>net7.0;net7.0-android;net7.0-ios;net7.0-maccatalyst</TargetFrameworks>
+		<TargetFrameworks>net7.0;net7.0-android;net7.0-ios</TargetFrameworks>
 		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.19041.0;$(TargetFrameworks)</TargetFrameworks>
-
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -81,15 +76,18 @@
 
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-android'))">
 		<Compile Include="Platforms\net6-android\*.cs" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-ios'))">
 		<Compile Include="Platforms\net6-ios\*.cs" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 
 	<!-- Mac Platform Support -->
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-mac'))">
 		<Compile Include="Platforms\net6-mac\*.cs" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-windows'))">
@@ -108,13 +106,14 @@
 	<!-- IS THIS .NET STD (.NET7)? -->
 	<ItemGroup Condition="$(TargetFramework) == 'net7.0'">
 		<Compile Include="Platforms\netstandard\*.cs" />
+    <!--
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
+    -->
 	</ItemGroup>
 
 	<!-- Common package requirements -->
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 </Project>
