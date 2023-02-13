@@ -76,18 +76,15 @@
 
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-android'))">
 		<Compile Include="Platforms\net6-android\*.cs" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-ios'))">
 		<Compile Include="Platforms\net6-ios\*.cs" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 
 	<!-- Mac Platform Support -->
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-mac'))">
 		<Compile Include="Platforms\net6-mac\*.cs" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.7.37"/>
 	</ItemGroup>
 
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-windows'))">
@@ -95,12 +92,11 @@
 	</ItemGroup>
 	
 	<!-- .NET 7.0 Platform support -->
-	<!-- IS THIS BLAZOR / WASM ??? 
+	<!-- IS THIS BLAZOR / WASM ??? 	-->
 	<ItemGroup Condition="$(TargetFramework.Equals('net7.0'))">
 		<Compile Include="Platforms\net6\*.cs" />
 		<PackageReference Include="Microsoft.JSInterop" Version="6.0.13" />
 	</ItemGroup>
-	-->
 
 	
 	<PropertyGroup Condition="$(TargetFramework.StartsWith('net7.0'))">
@@ -108,13 +104,14 @@
 	</PropertyGroup>
 	
 	<!-- .NET Standard 2.0 Platform Support -->
-	<!-- IS THIS .NET STD (.NET7)? -->
+	<!--
 	<ItemGroup Condition="$(TargetFramework) == 'net7.0'">
 		<Compile Include="Platforms\netstandard\*.cs" />
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
 		<PackageReference Include="System.Memory" Version="4.5.4" PrivateAssets="compile;contentfiles;build;analyzers" />
 	</ItemGroup>
+	-->
 
 	<!-- Common package requirements -->
 	<ItemGroup>
