@@ -48,6 +48,7 @@ namespace Microsoft.Datasync.Integration.Test.Helpers
         public decimal DecimalValue { get; set; }
         public double DoubleValue { get; set; }
         public float FloatValue { get; set; }
+        public double? NullableDouble { get; set; }
 
         // String
         public char CharValue { get; set; }
@@ -57,5 +58,12 @@ namespace Microsoft.Datasync.Integration.Test.Helpers
         public DateTime? DateTimeValue { get; set; }
         public DateTimeOffset? DateTimeOffsetValue { get; set; }
         public Guid? GuidValue { get; set; }
+    }
+
+    [ExcludeFromCodeCoverage]
+    public class DateTimeDto : DatasyncClientData
+    {
+        public string DateOnly { get; set; }
+        public string TimeOnly { get; set; }
     }
 }

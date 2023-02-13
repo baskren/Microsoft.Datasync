@@ -59,7 +59,30 @@ namespace Microsoft.Datasync.Integration.Test.KitchenSink
         }
 
         [Fact]
-        public async Task KS2_DeferredTableDefinition()
+        public async Task KS2_NullDoubleSearch()
+        {
+            // On client 1
+            KitchenSinkDto client1dto = new() { NullableDouble = -1.0 };
+            await remoteTable.InsertItemAsync(client1dto);
+            var remoteId = client1dto.Id;
+            Assert.NotEmpty(remoteId);
+
+            // On client 2
+            await InitializeAsync();
+            var pullQuery = offlineTable!.CreateQuery();
+            await offlineTable!.PullItemsAsync(pullQuery, new PullOptions());
+            var client2dto = await offlineTable.GetItemAsync(remoteId);
+            Assert.NotNull(client2dto);
+            Assert.True(client2dto.NullableDouble < -0.5);
+
+            // Finally, let's search!
+            var elements = await offlineTable!.Where(x => x.NullableDouble < -0.5).ToListAsync();
+            Assert.Single(elements);
+            Assert.Equal(elements[0].Id, remoteId);
+        }
+
+        [Fact]
+        public async Task KS3_DeferredTableDefinition()
         {
             var filename = Path.GetTempFileName();
             var connectionString = new UriBuilder(filename) { Query = "?mode=rwc" }.Uri.ToString();
@@ -75,6 +98,25 @@ namespace Microsoft.Datasync.Integration.Test.KitchenSink
 
             itemCount = await table.GetAsyncItems().CountAsync();
             Assert.Equal(Movies.Count, itemCount);
+        }
+
+        [Fact]
+        public async Task KS4_WriteDeltaTokenInterval()
+        {
+            // On client 1
+            for (int i = 1; i <= 50; i++)
+            {
+                KitchenSinkDto dto = new() { StringValue = $"String {i}", IntValue = i };
+                await remoteTable.InsertItemAsync(dto);
+            }
+
+            // On client 2
+            await InitializeAsync();
+            var pullQuery = offlineTable!.CreateQuery();
+            await offlineTable!.PullItemsAsync(pullQuery, new PullOptions() { WriteDeltaTokenInterval = 25 });
+            // Make sure we have 50 values with IntValue > 0
+            var entities = await offlineTable.Where(x => x.IntValue > 0).ToListAsync();
+            Assert.Equal(50, entities.Count);
         }
     }
 }

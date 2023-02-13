@@ -228,7 +228,7 @@ namespace Microsoft.Datasync.Client.Test.Query
             var client = GetMockClient();
             RemoteTable<IdEntity> table = client.GetRemoteTable<IdEntity>("movies") as RemoteTable<IdEntity>;
             var query = new TableQuery<IdEntity>(table);
-            var actual = query.Select(m => new IdOnly { Id = m.Id }) as TableQuery<IdOnly>;
+            var actual = query.Select(m => new IdOnly { Id = m.Id });
             Assert.IsAssignableFrom<MethodCallExpression>(actual.Query.Expression);
             var expression = actual.Query.Expression as MethodCallExpression;
             Assert.Equal("Select", expression.Method.Name);
@@ -241,9 +241,21 @@ namespace Microsoft.Datasync.Client.Test.Query
         {
             var client = GetMockClient();
             RemoteTable<IdEntity> table = client.GetRemoteTable<IdEntity>("movies") as RemoteTable<IdEntity>;
-            var query = new TableQuery<IdEntity>(table).Select(m => new IdOnly { Id = m.Id }) as TableQuery<IdOnly>;
+            var query = new TableQuery<IdEntity>(table).Select(m => new IdOnly { Id = m.Id });
             var odata = query.ToODataString();
             Assert.Equal("$select=id", odata);
+        }
+
+        [Fact]
+        [Trait("Method", "ToODataString")]
+        [Trait("Method", "Select")]
+        public void ToODataString_Select_NoId_IsWellFormed()
+        {
+            var client = GetMockClient();
+            RemoteTable<ClientMovie> table = client.GetRemoteTable<ClientMovie>("movies") as RemoteTable<ClientMovie>;
+            var query = table.CreateQuery().Select(m => new { m.Title, m.ReleaseDate });
+            var odata = query.ToODataString();
+            Assert.Equal("$select=releaseDate,title", odata);
         }
 
         [Theory, CombinatorialData]
@@ -752,11 +764,38 @@ namespace Microsoft.Datasync.Client.Test.Query
             Assert.Equal("$orderby=releaseDate&foo=bar", actual);
         }
 
+        [Fact]
+        public void ToODataString_NegativeDouble_Works()
+        {
+            var client = GetMockClient();
+            var table = new RemoteTable<KSV>("ksv", client);
+            var query = new TableQuery<KSV>(table).Where(x => x.Value <= -0.5) as TableQuery<KSV>;
+            var actual = query.ToODataString();
+            Assert.Equal("$filter=(value le -0.5)", actual);
+        }
+
+        [Fact]
+        public void ToODataString_NegativeNullableDouble_Works()
+        {
+            var client = GetMockClient();
+            var table = new RemoteTable<KSV>("ksv", client);
+            var query = new TableQuery<KSV>(table).Where(x => x.NullableValue <= -0.5) as TableQuery<KSV>;
+            var actual = query.ToODataString();
+            Assert.Equal("$filter=(nullableValue le -0.5)", actual);
+        }
+
         #region Models
         public class SelectResult
         {
             public string Id { get; set; }
             public string Title { get; set; }
+        }
+
+        public class KSV : DatasyncClientData
+        {
+            public double Value { get; set; }
+
+            public double? NullableValue { get; set; }
         }
         #endregion
     }
