@@ -85,7 +85,7 @@ namespace Microsoft.Datasync.Client.Offline
         /// <summary>
         /// Persistent storage for delta-tokens.
         /// </summary>
-        internal DeltaTokenStore DeltaTokenStore { get; private set; }
+        internal IDeltaTokenStore DeltaTokenStore { get; private set; }
 
         /// <summary>
         /// The service client to use for communicating with the back end service.
@@ -127,12 +127,22 @@ namespace Microsoft.Datasync.Client.Offline
                 await OperationsQueue.InitializeAsync(cancellationToken).ConfigureAwait(false);
 
                 // Initialize the delta token store.
-                DeltaTokenStore = new DeltaTokenStore(OfflineStore);
+                if (OfflineStore is IDeltaTokenStoreProvider provider)
+                {
+                    DeltaTokenStore = await provider.GetDeltaTokenStoreAsync(cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    DeltaTokenStore = new DeltaToken.DefaultDeltaTokenStore(OfflineStore);
+                }
 
                 // Clear the errors in the store.
                 var errorsEnumerable = new FuncAsyncPageable<TableOperationError>(nextLink => GetPageOfErrorsAsync("", nextLink, cancellationToken));
                 var errors = await errorsEnumerable.ToZumoListAsync(cancellationToken).ConfigureAwait(false);
-                //await RemoveErrorsAsync(errors, cancellationToken).ConfigureAwait(false);
+                if (errors.Any())
+                {
+                    await RemoveErrorsAsync(errors, cancellationToken).ConfigureAwait(false);
+                }
 
                 // We are now initialized.
                 IsInitialized = true;
@@ -317,16 +327,19 @@ namespace Microsoft.Datasync.Client.Offline
             }
 
             var deltaToken = await DeltaTokenStore.GetDeltaTokenAsync(tableName, queryId, cancellationToken).ConfigureAwait(false);
-            var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
-            queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+            // Issue 601 - if the delta-token is 0L (in Unix ms), then it's a "new pull", so we don't need the "updatedAt" filter nor
+            // do we need the include deleted flag.
+            Dictionary<string, string> parameters = new();
+            if (options.AlwaysPullWithDeltaToken || deltaToken.ToUnixTimeMilliseconds() > 0L)
+            {
+                var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
+                queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+                parameters.Add(ODataOptions.IncludeDeleted, "true");
+            }
             queryDescription.IncludeTotalCount = true;
             queryDescription.Ordering.Add(new OrderByNode(new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), true));
-            Dictionary<string, string> parameters = new()
-            {
-                { ODataOptions.IncludeDeleted, "true" }
-            };
-
             var odataString = queryDescription.ToODataString(parameters);
+
             SendPullStartedEvent(tableName);
             long itemCount = 0;
             long expectedItems = -1;
@@ -364,7 +377,7 @@ namespace Microsoft.Datasync.Client.Offline
                         throw new InvalidOperationException("Received an item for which there is a pending operation.");
                     }
                     SendItemWillBeStoredEvent(tableName, itemId, itemCount, expectedItems);
-                    
+
                     if (ServiceSerializer.IsDeleted(item))
                     {
                         await OfflineStore.DeleteAsync(tableName, new[] { itemId }, cancellationToken).ConfigureAwait(false);
@@ -514,9 +527,9 @@ namespace Microsoft.Datasync.Client.Offline
                 {
                     SendItemWillBePushedEvent(operation.TableName, operation.ItemId, itemCount[0]);
                     bool isSuccessful = await ExecutePushOperationAsync(operation, batch, true, cancellationToken).ConfigureAwait(false);
-                    lock(itemCount) 
+                    lock(itemCount)
                     {
-                        itemCount[0]++; 
+                        itemCount[0]++;
                     }
                     SendItemWasPushedEvent(operation.ItemId, operation.ItemId, itemCount[0], isSuccessful);
                 });
@@ -849,7 +862,7 @@ namespace Microsoft.Datasync.Client.Offline
         }
 
         /// <summary>
-        /// Obtains the maximum number of parallel operations allowed, based on the passed in 
+        /// Obtains the maximum number of parallel operations allowed, based on the passed in
         /// <see cref="PushOptions"/> and/or the global options.
         /// </summary>
         /// <param name="options">The <see cref="PushOptions"/> for this operation, or null.</param>

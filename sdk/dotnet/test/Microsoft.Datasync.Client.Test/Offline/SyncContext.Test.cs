@@ -5,6 +5,7 @@ using Datasync.Common.Test;
 using Datasync.Common.Test.Mocks;
 using Datasync.Common.Test.Models;
 using Microsoft.Datasync.Client.Offline;
+using Microsoft.Datasync.Client.Offline.DeltaToken;
 using Microsoft.Datasync.Client.Offline.Queue;
 using Microsoft.Datasync.Client.Query;
 using Microsoft.Datasync.Client.Table;
@@ -12,7 +13,6 @@ using Microsoft.Datasync.Client.Test.Helpers;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NuGet.Frameworks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -194,11 +194,23 @@ namespace Microsoft.Datasync.Client.Test.Offline
 
             var opQueue = context.OperationsQueue;
             var tokenStore = context.DeltaTokenStore;
+            Assert.IsAssignableFrom<DefaultDeltaTokenStore>(tokenStore);
 
             await context.InitializeAsync();
 
             Assert.Same(opQueue, context.OperationsQueue);
             Assert.Same(tokenStore, context.DeltaTokenStore);
+        }
+
+        [Fact]
+        [Trait("Method", "InitializeAsync")]
+        public async Task InitializeAsync_UsesStoreProvider_ForDeltaTokenStore()
+        {
+            var store = new MockOfflineStore_WithDeltaToken();
+            var context = new SyncContext(client, store);
+            await context.InitializeAsync();
+
+            Assert.True(store.DeltaTokenStoreInitialized);
         }
         #endregion
 
@@ -543,7 +555,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             MockHandler.AddResponse(HttpStatusCode.OK, new Page<IdEntity> { Items = new List<IdEntity>() });
             store.GetOrCreateTable("movies");
 
-            await context.PullItemsAsync("movies", "", new PullOptions());
+            await context.PullItemsAsync("movies", "", new PullOptions() { AlwaysPullWithDeltaToken = true });
 
             // Items were pulled.
             var storedEntities = store.TableMap["movies"]?.Values.ToList() ?? new List<JObject>();
@@ -565,7 +577,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             MockHandler.AddResponse(HttpStatusCode.OK, new Page<IdEntity> { Items = new List<IdEntity>() });
             store.GetOrCreateTable("movies");
 
-            await context.PullItemsAsync("movies", "$filter=(rating eq 'PG-13')", new PullOptions());
+            await context.PullItemsAsync("movies", "$filter=(rating eq 'PG-13')", new PullOptions() { AlwaysPullWithDeltaToken = true });
 
             // Items were pulled.
             var storedEntities = store.TableMap["movies"]?.Values.ToList() ?? new List<JObject>();
@@ -587,7 +599,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             var context = await GetSyncContext();
             var items = CreatePageOfMovies(10, lastUpdatedAt);
 
-            await context.PullItemsAsync("movies", "", new PullOptions());
+            await context.PullItemsAsync("movies", "", new PullOptions() { AlwaysPullWithDeltaToken = true });
 
             // Items were pulled.
             var storedEntities = store.TableMap["movies"].Values.ToList();
@@ -618,7 +630,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
 
             // Query was correct
             Assert.Single(MockHandler.Requests);
-            Assert.Equal("/tables/movies?$filter=(updatedAt gt cast(1970-01-01T00:00:00.000Z,Edm.DateTimeOffset))&$orderby=updatedAt&$count=true&__includedeleted=true", Uri.UnescapeDataString(MockHandler.Requests[0].RequestUri.PathAndQuery));
+            Assert.Equal("/tables/movies?$orderby=updatedAt&$count=true", Uri.UnescapeDataString(MockHandler.Requests[0].RequestUri.PathAndQuery));
 
             // Events were sent properly
             Assert.Equal(22, events.Count); // 2 for each event, plus start and finish.
@@ -649,7 +661,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
         {
             var lastUpdatedAt = DateTimeOffset.Parse("2021-03-24T12:50:44.000+00:00");
             var context = await GetSyncContext();
-            var options = new PullOptions { QueryId = "abc123" };
+            var options = new PullOptions { AlwaysPullWithDeltaToken = true, QueryId = "abc123" };
             const string keyId = "dt.movies.abc123";
             var items = CreatePageOfMovies(10, lastUpdatedAt);
 
@@ -697,7 +709,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             var items = CreatePageOfMovies(10, lastUpdatedAt, 3);
             store.Upsert("movies", items); // store the 10 items in the store
 
-            await context.PullItemsAsync("movies", "", new PullOptions());
+            await context.PullItemsAsync("movies", "", new PullOptions() { AlwaysPullWithDeltaToken = true });
 
             // Items were pulled, and the deleted items were in fact deleted.
             var storedEntities = store.TableMap["movies"].Values.ToList();
@@ -776,7 +788,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
 
             var lastUpdatedAt = DateTimeOffset.Parse("2021-03-24T12:50:44.000+00:00");
             var context = await GetSyncContext();
-            var options = new PullOptions { QueryId = "abc123" };
+            var options = new PullOptions { AlwaysPullWithDeltaToken = true, QueryId = "abc123" };
             const string keyId = "dt.movies.abc123";
             var items = CreatePageOfMovies(10, lastUpdatedAt);
 
@@ -880,6 +892,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.Empty(store.TableMap[SystemTables.Configuration]);
             Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
 
         [Fact]
@@ -896,6 +909,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.Empty(store.TableMap[SystemTables.Configuration]);
             Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
 
         [Fact]
@@ -912,6 +926,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.Empty(store.TableMap[SystemTables.Configuration]);
             Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
 
         [Fact]
@@ -928,6 +943,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
             Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.Empty(store.TableMap[SystemTables.Configuration]);
             Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
 
         [Fact]
@@ -942,11 +958,14 @@ namespace Microsoft.Datasync.Client.Test.Offline
             const string query = "";
             var options = new PurgeOptions();
 
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
+
             await Assert.ThrowsAsync<InvalidOperationException>(() => context.PurgeItemsAsync(tableName, query, options));
 
             Assert.NotEmpty(store.TableMap["test"]);
             Assert.NotEmpty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.NotEmpty(store.TableMap[SystemTables.Configuration]["dt.test.abc123"]);
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
         }
 
         [Fact]
@@ -961,11 +980,14 @@ namespace Microsoft.Datasync.Client.Test.Offline
             const string query = "";
             var options = new PurgeOptions() { DiscardPendingOperations = true };
 
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
+
             await context.PurgeItemsAsync(tableName, query, options);
 
             Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.NotEmpty(store.TableMap[SystemTables.Configuration]["dt.test.abc123"]);
             Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
 
         [Fact]
@@ -980,11 +1002,14 @@ namespace Microsoft.Datasync.Client.Test.Offline
             const string query = "";
             var options = new PurgeOptions() { DiscardPendingOperations = true, QueryId = "abc123" };
 
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
+
             await context.PurgeItemsAsync(tableName, query, options);
 
             Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.Empty(store.TableMap[SystemTables.Configuration]);
             Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
 
         [Fact]
@@ -999,11 +1024,14 @@ namespace Microsoft.Datasync.Client.Test.Offline
             const string query = "";
             var options = new PurgeOptions() { DiscardPendingOperations = false };
 
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
+
             await Assert.ThrowsAsync<InvalidOperationException>(() => context.PurgeItemsAsync(tableName, query, options));
 
             Assert.NotEmpty(store.TableMap["test"]);
             Assert.NotEmpty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.NotEmpty(store.TableMap[SystemTables.Configuration]["dt.test.abc123"]);
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
         }
 
         [Fact]
@@ -1018,11 +1046,34 @@ namespace Microsoft.Datasync.Client.Test.Offline
             const string query = "";
             var options = new PurgeOptions() { DiscardPendingOperations = false, QueryId = "abc123" };
 
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
+
             await Assert.ThrowsAsync<InvalidOperationException>(() => context.PurgeItemsAsync(tableName, query, options));
 
             Assert.NotEmpty(store.TableMap["test"]);
             Assert.NotEmpty(store.TableMap[SystemTables.OperationsQueue]);
             Assert.NotEmpty(store.TableMap[SystemTables.Configuration]["dt.test.abc123"]);
+            Assert.Equal(store.TableMap[SystemTables.OperationsQueue].Count, context.PendingOperations);
+        }
+
+        [Fact]
+        [Trait("Method", "PurgeItemsAsync")]
+        public async Task PurgeItems_WithSearch_WithRecords()
+        {
+            AddRandomOperations("test", 10);
+            AddRandomRecords("test", 10);
+            SetDeltaToken("test", "abc123");
+            var context = await GetSyncContext();
+            const string tableName = "test";
+            const string query = "deleted eq false";
+            var options = new PurgeOptions() { DiscardPendingOperations = true };
+
+            await context.PurgeItemsAsync(tableName, query, options);
+
+            Assert.Empty(store.TableMap[SystemTables.OperationsQueue]);
+            Assert.NotEmpty(store.TableMap[SystemTables.Configuration]);
+            Assert.Empty(store.TableMap[tableName]);
+            Assert.Equal(0, context.PendingOperations);
         }
         #endregion
 
@@ -1147,7 +1198,7 @@ namespace Microsoft.Datasync.Client.Test.Offline
                 Assert.NotNull(request);
                 Assert.Equal(HttpMethod.Delete, request.Method);
                 Assert.Equal($"\"{movie.Version}\"", request.Headers.IfMatch.FirstOrDefault()?.Tag);
-            }           
+            }
         }
 
         [Fact]
@@ -2311,6 +2362,19 @@ namespace Microsoft.Datasync.Client.Test.Offline
                 return Task.FromResult(ResponseObjectFunc.Invoke());
             }
             return base.ExecuteRemoteOperationAsync(table, cancellationToken);
+        }
+    }
+
+    [ExcludeFromCodeCoverage]
+    internal class MockOfflineStore_WithDeltaToken : MockOfflineStore, IDeltaTokenStoreProvider
+    {
+        internal bool DeltaTokenStoreInitialized { get; set; } = false;
+
+        public Task<IDeltaTokenStore> GetDeltaTokenStoreAsync(CancellationToken cancellationToken = default)
+        {
+            DeltaTokenStoreInitialized = true;
+            var store = new DefaultDeltaTokenStore(this);
+            return Task.FromResult<IDeltaTokenStore>(store);
         }
     }
     #endregion

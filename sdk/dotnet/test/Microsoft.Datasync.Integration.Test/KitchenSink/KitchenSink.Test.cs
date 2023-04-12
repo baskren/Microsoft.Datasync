@@ -1,9 +1,13 @@
-﻿using Datasync.Common.Test.Models;
+﻿// Copyright (c) Microsoft Corporation. All Rights Reserved.
+// Licensed under the MIT License.
+
+using Datasync.Common.Test.Models;
 using Microsoft.Datasync.Client;
 using Microsoft.Datasync.Client.Offline;
 using Microsoft.Datasync.Client.SQLiteStore;
 using Microsoft.Datasync.Integration.Test.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -56,6 +60,9 @@ namespace Microsoft.Datasync.Integration.Test.KitchenSink
             Assert.NotNull(client2dto);
             // Issue 408 - cannot replace a string with a null.
             Assert.Null(client2dto.StringValue);
+
+            // Check log statements here
+            Assert.True(storeLoggerMock.Invocations.Count > 0);
         }
 
         [Fact]
@@ -117,6 +124,31 @@ namespace Microsoft.Datasync.Integration.Test.KitchenSink
             // Make sure we have 50 values with IntValue > 0
             var entities = await offlineTable.Where(x => x.IntValue > 0).ToListAsync();
             Assert.Equal(50, entities.Count);
+        }
+
+        [Fact]
+        public async Task KS5_CanSearchByEnum()
+        {
+            List<KitchenSinkDto> insertions = new()
+            {
+                new KitchenSinkDto { StringValue = "state=none", EnumValue = KitchenSinkDtoState.None },
+                new KitchenSinkDto { StringValue = "state=completed", EnumValue = KitchenSinkDtoState.Completed },
+                new KitchenSinkDto { StringValue = "state=failed", EnumValue = KitchenSinkDtoState.Failed }
+            };
+            foreach (var insertion in insertions)
+            {
+                await remoteTable.InsertItemAsync(insertion);
+            }
+
+            // Synchronize to offline table
+            await InitializeAsync();
+            var pullQuery = offlineTable!.CreateQuery();
+            await offlineTable!.PullItemsAsync(pullQuery, new PullOptions());
+
+            // Issue 610 - can we find the DTO that is completed?
+            var items = await offlineTable!.Where(x => x.EnumValue == KitchenSinkDtoState.Completed).ToListAsync();
+            Assert.Single(items);
+            Assert.Equal("state=completed", items[0].StringValue);
         }
     }
 }
