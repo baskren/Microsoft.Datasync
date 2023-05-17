@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All Rights Reserved.
 // Licensed under the MIT License.
 
+using Newtonsoft.Json.Linq;
+
 namespace Microsoft.Datasync.Client.Offline
 {
     /// <summary>
@@ -32,6 +34,8 @@ namespace Microsoft.Datasync.Client.Offline
         /// When an item is indicated, the ID of the item that was processed.
         /// </summary>
         public string ItemId { get; internal set; }
+
+        public JObject Item { get; internal set; }
 
         /// <summary>
         /// When pulling records, the number of items that have been processed.

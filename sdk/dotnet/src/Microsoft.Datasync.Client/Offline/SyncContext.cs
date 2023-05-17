@@ -347,23 +347,23 @@ namespace Microsoft.Datasync.Client.Offline
                     if (instance is not JObject item)
                     {
                         SendPullFinishedEvent(tableName, itemCount, false);
-                        throw new DatasyncInvalidOperationException("Received item is not an object");
+                        throw new DatasyncInvalidOperationException($"Received item is not an object : [{tableName}]");
                     }
 
                     string itemId = ServiceSerializer.GetId(item);
                     if (itemId == null)
                     {
                         SendPullFinishedEvent(tableName, itemCount, false);
-                        throw new DatasyncInvalidOperationException("Received an item without an ID");
+                        throw new DatasyncInvalidOperationException($"Received an item without an ID : [{tableName}]");
                     }
 
                     var pendingOperation = await OperationsQueue.GetOperationByItemIdAsync(tableName, itemId, cancellationToken).ConfigureAwait(false);
                     if (pendingOperation != null)
                     {
                         SendPullFinishedEvent(tableName, itemCount, false);
-                        throw new InvalidOperationException("Received an item for which there is a pending operation.");
+                        throw new InvalidOperationException($"Received an item for which there is a pending operation. : [{tableName}]");
                     }
-                    SendItemWillBeStoredEvent(tableName, itemId, itemCount, expectedItems);
+                    SendItemWillBeStoredEvent(tableName, itemId, item, itemCount, expectedItems);
                     
                     if (ServiceSerializer.IsDeleted(item))
                     {
@@ -374,14 +374,23 @@ namespace Microsoft.Datasync.Client.Offline
                         await OfflineStore.UpsertAsync(tableName, new[] { item }, true, cancellationToken).ConfigureAwait(false);
                     }
                     itemCount++;
+
+                    System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : [{itemCount}]/[{expectedItems}]  [{(Xamarin.Essentials.MainThread.IsMainThread ? "!!!! MAIN THREAD !!!!" : string.Empty)}]");
+
                     updatedAt = ServiceSerializer.GetUpdatedAt(item)?.ToUniversalTime();
                     if (itemCount % options.WriteDeltaTokenInterval == 0 && updatedAt.HasValue)
                     {
                         await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, updatedAt.Value, cancellationToken).ConfigureAwait(false);
                         updatedAt = null; // Easy way to prevent the finally block to not write twice.
                     }
-                    SendItemWasStoredEvent(tableName, itemId, itemCount, expectedItems);
+                    SendItemWasStoredEvent(tableName, itemId, item, itemCount, expectedItems);
                 }
+            }
+            catch (Exception ex)
+            {
+
+                System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : {ex} ");
+
             }
             finally
             {
@@ -491,10 +500,10 @@ namespace Microsoft.Datasync.Client.Offline
                     TableOperation operation = await OperationsQueue.PeekAsync(0, tableNames, cancellationToken).ConfigureAwait(false);
                     while (operation != null)
                     {
-                        SendItemWillBePushedEvent(operation.TableName, operation.ItemId, itemCount);
+                        SendItemWillBePushedEvent(operation.TableName, operation.ItemId, operation.Item, itemCount);
                         bool isSuccessful = await ExecutePushOperationAsync(operation, batch, true, cancellationToken).ConfigureAwait(false);
                         itemCount++;
-                        SendItemWasPushedEvent(operation.TableName, operation.ItemId, itemCount, isSuccessful);
+                        SendItemWasPushedEvent(operation.TableName, operation.ItemId, operation.Item, itemCount, isSuccessful);
                         if (batch.AbortReason.HasValue)
                         {
                             break;
@@ -512,13 +521,13 @@ namespace Microsoft.Datasync.Client.Offline
                 var itemCount = new long[] { 0 };
                 QueueHandler queueHandler = new(maxThreads, async (operation) =>
                 {
-                    SendItemWillBePushedEvent(operation.TableName, operation.ItemId, itemCount[0]);
+                    SendItemWillBePushedEvent(operation.TableName, operation.ItemId, operation.Item, itemCount[0]);
                     bool isSuccessful = await ExecutePushOperationAsync(operation, batch, true, cancellationToken).ConfigureAwait(false);
                     lock(itemCount) 
                     {
                         itemCount[0]++; 
                     }
-                    SendItemWasPushedEvent(operation.ItemId, operation.ItemId, itemCount[0], isSuccessful);
+                    SendItemWasPushedEvent(operation.ItemId, operation.ItemId, operation.Item, itemCount[0], isSuccessful);
                 });
                 try
                 {
@@ -913,7 +922,7 @@ namespace Microsoft.Datasync.Client.Offline
             });
         }
 
-        private void SendItemWillBePushedEvent(string tableName, string itemId, long itemCount)
+        private void SendItemWillBePushedEvent(string tableName, string itemId, JObject jobject, long itemCount)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -922,11 +931,12 @@ namespace Microsoft.Datasync.Client.Offline
                 QueueLength = OperationsQueue.PendingOperations,
                 TableName = tableName,
                 ItemId = itemId,
+                Item = jobject,
                 IsSuccessful = null
             });
         }
 
-        private void SendItemWasPushedEvent(string tableName, string itemId, long itemCount, bool success)
+        private void SendItemWasPushedEvent(string tableName, string itemId, JObject jobject, long itemCount, bool success)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -935,11 +945,12 @@ namespace Microsoft.Datasync.Client.Offline
                 QueueLength = OperationsQueue.PendingOperations,
                 TableName = tableName,
                 ItemId = itemId,
+                Item = jobject,
                 IsSuccessful = success
             });
         }
 
-        private void SendItemWillBeStoredEvent(string tableName, string itemId, long itemCount, long expectedItems)
+        private void SendItemWillBeStoredEvent(string tableName, string itemId, JObject jobject, long itemCount, long expectedItems)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -948,11 +959,12 @@ namespace Microsoft.Datasync.Client.Offline
                 QueueLength = expectedItems,
                 TableName = tableName,
                 ItemId = itemId,
+                Item = jobject,
                 IsSuccessful = null
             });
         }
 
-        private void SendItemWasStoredEvent(string tableName, string itemId, long itemCount, long expectedItems)
+        private void SendItemWasStoredEvent(string tableName, string itemId, JObject jobject, long itemCount, long expectedItems)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -961,9 +973,11 @@ namespace Microsoft.Datasync.Client.Offline
                 QueueLength = expectedItems,
                 TableName = tableName,
                 ItemId = itemId,
+                Item = jobject,
                 IsSuccessful = true
-            });
+            }) ;
         }
+
         #endregion
 
         #region IDisposable

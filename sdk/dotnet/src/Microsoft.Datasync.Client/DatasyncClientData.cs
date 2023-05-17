@@ -37,6 +37,9 @@ namespace Microsoft.Datasync.Client
         public virtual string Version { get; set; }
 
 
-
+        public override string ToString()
+        {
+            return $"\"Id\": \"{Id}\", \"Deleted\": {Deleted}, \"UpdatedAt\": \"{UpdatedAt}\"";
+        }
     }
 }

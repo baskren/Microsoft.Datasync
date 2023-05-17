@@ -113,6 +113,8 @@ namespace Microsoft.Datasync.Client.Http
             }
         }
 
+        static long requestIndex;
+
         /// <summary>
         /// Sends a request through the HTTP pipeline to the remote service asynchronously.
         /// </summary>
@@ -124,16 +126,52 @@ namespace Microsoft.Datasync.Client.Http
         {
             Arguments.IsNotNull(serviceRequest, nameof(serviceRequest));
             HttpRequestMessage request = serviceRequest.ToHttpRequestMessage();
+
+            var reqIndex = requestIndex++;
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  REQUEST [{reqIndex}] ENTER ==================");
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] METHOD:           {request.Method}");
+            if (request.Options.Any())
+            {
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] OPTIONS:         ");
+                foreach (var option in request.Options)
+                    System.Diagnostics.Debug.WriteLine($"[{reqIndex}]\t\t {option.Key} : {option.Value} ");
+            }
+            if (client.DefaultRequestHeaders.Any())
+            {
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] DEFAULT HEADERS:         ");
+                foreach (var option in client.DefaultRequestHeaders)
+                    System.Diagnostics.Debug.WriteLine($"[{reqIndex}]\t\t {option.Key} : {option.Value} ");
+            }
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] BASE ADDRESS:     {client.BaseAddress}");
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] URI:              {request.RequestUri}");
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT:          {request.Content}");
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  REQUEST [{reqIndex}] EXIT  ==================");
+
+
             HttpResponseMessage response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] ENTER ==================");
             if (!response.IsSuccessStatusCode)
             {
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] INVALID STATUS CODE: {(int)response.StatusCode} ({response.StatusCode}) ");
+                var contentx = await response.Content?.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {contentx}");
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
+
                 throw await ThrowInvalidResponseAsync(request, response, cancellationToken);
+
+
             }
 
             if (serviceRequest.EnsureResponseContent)
             {
                 if (!response.HasContent())
                 {
+
+                    System.Diagnostics.Debug.WriteLine($"[{reqIndex}] NO CONTENT ");
+                    System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
+
                     throw new DatasyncInvalidOperationException("The server did not provide a response with the expected content.", request, response);
                 }
 
@@ -142,10 +180,22 @@ namespace Microsoft.Datasync.Client.Http
                     long? contentLength = response.Content.Headers.ContentLength;
                     if (contentLength == null || contentLength <= 0)
                     {
+
+                        System.Diagnostics.Debug.WriteLine($"[{reqIndex}] SERVER DID NOT PROVIDE EXPECTED CONTENT ");
+                        var contentx = await response.Content?.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {contentx}");
+                        System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
                         throw new DatasyncInvalidOperationException("The server did not provide a response with the expected content.", request, response);
                     }
                 }
             }
+
+            //var content = await response.Content.ReadAsStringAsync();
+            //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {content}");
+
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : VALID RESPONSE");
+
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
 
             var serviceResponse = await ServiceResponse.CreateResponseAsync(response, cancellationToken).ConfigureAwait(false);
             request.Dispose();
