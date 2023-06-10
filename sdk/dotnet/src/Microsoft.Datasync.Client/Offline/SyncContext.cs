@@ -336,7 +336,16 @@ namespace Microsoft.Datasync.Client.Offline
             var batchInserts = new List<JObject>();
             DateTimeOffset? batchUpdatedAt = DateTimeOffset.MinValue;
 
+            var stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+
             var enumerable = table.GetAsyncItems(odataString);
+
+            System.Diagnostics.Debug.WriteLine($"SyncContext.PullItemsAsync : table<{tableName}>.GetAsyncItems elapsed [{stopwatch.ElapsedMilliseconds}] ");
+            stopwatch.Stop();
+
+
+
             try
             {
                 await foreach (var instance in enumerable)

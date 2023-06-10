@@ -251,6 +251,63 @@ namespace Microsoft.Datasync.Client.Table
             return result;
         }
 
+        protected async Task<Page<JsonReader>> GetNextPageAsJsonReaderAsync(string query = "", string requestUri = null, CancellationToken cancellationToken = default)
+        {
+            string queryString = string.IsNullOrEmpty(query) ? string.Empty : $"?{query.TrimStart('?').TrimEnd()}";
+            ServiceRequest request = new()
+            {
+                Method = HttpMethod.Get,
+                UriPathAndQuery = requestUri ?? TableEndpoint + queryString,
+                EnsureResponseContent = true
+            };
+            var response = await SendRequestForJsonReaderAsync(request, cancellationToken).ConfigureAwait(false);
+            var result = new Page<JsonReader>();
+
+            /*
+            if (response is JArray array)
+                response = array[0];
+
+            if (response is JObject)
+            {
+                if (response[Page.OdataItemsProperty] is JArray itemsArray)
+                {
+                    result.Items = itemsArray.ToList();
+                }
+                else if (response[Page.JsonItemsProperty]?.Type == JTokenType.Array)
+                {
+                    result.Items = ((JArray)response[Page.JsonItemsProperty] as JArray).ToList();
+                }
+
+                if (response[Page.OdataCountProperty]?.Type == JTokenType.Integer)
+                {
+                    result.Count = response.Value<long>(Page.OdataCountProperty);
+                }
+                else if (response[Page.JsonCountProperty]?.Type == JTokenType.Integer)
+                {
+                    result.Count = response.Value<long>(Page.JsonCountProperty);
+                }
+
+                if (response[Page.OdataNextLinkProperty]?.Type == JTokenType.String)
+                {
+                    result.NextLink = new Uri(response.Value<string>(Page.OdataNextLinkProperty));
+                }
+                else if (response[Page.JsonNextLinkProperty]?.Type == JTokenType.String)
+                {
+                    result.NextLink = new Uri(response.Value<string>(Page.JsonNextLinkProperty));
+                }
+            }
+            */
+            /*
+            else if (response is JArray array)
+            {
+                result.Items = array.ToList();
+                result.Count = array.Count;
+                //result.NextLink = array.Next;
+            }
+            */
+            return result;
+        }
+
         /// <summary>
         /// Gets the conditional headers for the request to the remote service.
         /// </summary>
@@ -295,6 +352,34 @@ namespace Microsoft.Datasync.Client.Table
             {
                 var response = await ServiceClient.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 return GetJTokenFromResponse(response);
+            }
+            catch (DatasyncInvalidOperationException ex) when (ex.IsConflictStatusCode())
+            {
+                string content = await ex.Response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                JToken token = string.IsNullOrEmpty(content) ? null : JsonConvert.DeserializeObject<JToken>(content, ServiceClient.Serializer.SerializerSettings);
+                JObject value = ValidItemOrNull(token);
+                if (value != null)
+                {
+                    throw new DatasyncConflictException(ex, ValidItemOrNull(token));
+                }
+
+                throw;
+            }
+        }
+
+        internal async Task<JsonReader> SendRequestForJsonReaderAsync(ServiceRequest request, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var response = await ServiceClient.HttpClient.SendForHttpResponseAsync(request, cancellationToken).ConfigureAwait(false);
+
+                using var responseStream = await response.Content.ReadAsStreamAsync();
+                using var streamReader = new System.IO.StreamReader(responseStream);
+                using var reader = new JsonTextReader(streamReader);
+
+                response.Dispose();
+
+                return reader;
             }
             catch (DatasyncInvalidOperationException ex) when (ex.IsConflictStatusCode())
             {

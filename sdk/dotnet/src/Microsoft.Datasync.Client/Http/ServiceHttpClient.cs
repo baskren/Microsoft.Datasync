@@ -124,6 +124,14 @@ namespace Microsoft.Datasync.Client.Http
         /// <exception cref="DatasyncInvalidOperationException">if content was expected but not received.</exception>
         internal async Task<ServiceResponse> SendAsync(ServiceRequest serviceRequest, CancellationToken cancellationToken = default)
         {
+            var response = await SendForHttpResponseAsync(serviceRequest, cancellationToken);
+            var serviceResponse = await ServiceResponse.CreateResponseAsync(response, cancellationToken).ConfigureAwait(false);
+            response.Dispose();
+            return serviceResponse;
+        }
+
+        internal async Task<HttpResponseMessage> SendForHttpResponseAsync(ServiceRequest serviceRequest, CancellationToken cancellationToken = default)
+        {
             Arguments.IsNotNull(serviceRequest, nameof(serviceRequest));
             HttpRequestMessage request = serviceRequest.ToHttpRequestMessage();
 
@@ -197,10 +205,9 @@ namespace Microsoft.Datasync.Client.Http
 
             System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
 
-            var serviceResponse = await ServiceResponse.CreateResponseAsync(response, cancellationToken).ConfigureAwait(false);
             request.Dispose();
-            response.Dispose();
-            return serviceResponse;
+            return response;
+
         }
 
         /// <summary>
