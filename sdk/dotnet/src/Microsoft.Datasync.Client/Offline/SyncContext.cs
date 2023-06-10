@@ -331,6 +331,11 @@ namespace Microsoft.Datasync.Client.Offline
             long itemCount = 0;
             long expectedItems = -1;
             DateTimeOffset? updatedAt = null;
+
+            var batchDeletes = new List<string>();
+            var batchInserts = new List<JObject>();
+            DateTimeOffset? batchUpdatedAt = DateTimeOffset.MinValue;
+
             var enumerable = table.GetAsyncItems(odataString);
             try
             {
@@ -364,7 +369,8 @@ namespace Microsoft.Datasync.Client.Offline
                         throw new InvalidOperationException($"Received an item for which there is a pending operation. : [{tableName}]");
                     }
                     SendItemWillBeStoredEvent(tableName, itemId, item, itemCount, expectedItems);
-                    
+
+                    /*
                     if (ServiceSerializer.IsDeleted(item))
                     {
                         await OfflineStore.DeleteAsync(tableName, new[] { itemId }, cancellationToken).ConfigureAwait(false);
@@ -373,33 +379,82 @@ namespace Microsoft.Datasync.Client.Offline
                     {
                         await OfflineStore.UpsertAsync(tableName, new[] { item }, true, cancellationToken).ConfigureAwait(false);
                     }
+                    */
+
+                    if (ServiceSerializer.IsDeleted(item))
+                    {
+                        batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                        batchDeletes.Add(itemId);
+                    }
+                    else
+                    {
+                        batchUpdatedAt = await BatchDelete(batchDeletes, batchUpdatedAt, tableName, queryId, cancellationToken);
+                        batchInserts.Add(item);
+                    }
+
+                    var itemUpdatedAt = ServiceSerializer.GetUpdatedAt(item)?.ToUniversalTime();
+                    if (itemUpdatedAt.HasValue && (!batchUpdatedAt.HasValue || itemUpdatedAt.Value > batchUpdatedAt))
+                        batchUpdatedAt = itemUpdatedAt.Value;
+
                     itemCount++;
 
                     System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : [{itemCount}]/[{expectedItems}]  [{(Xamarin.Essentials.MainThread.IsMainThread ? "!!!! MAIN THREAD !!!!" : string.Empty)}]");
 
+                    /*
                     updatedAt = ServiceSerializer.GetUpdatedAt(item)?.ToUniversalTime();
                     if (itemCount % options.WriteDeltaTokenInterval == 0 && updatedAt.HasValue)
                     {
                         await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, updatedAt.Value, cancellationToken).ConfigureAwait(false);
                         updatedAt = null; // Easy way to prevent the finally block to not write twice.
                     }
+                    */
+                    
                     SendItemWasStoredEvent(tableName, itemId, item, itemCount, expectedItems);
                 }
             }
             catch (Exception ex)
             {
-
                 System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : {ex} ");
 
             }
             finally
             {
+                batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                batchUpdatedAt = await BatchDelete(batchDeletes, batchUpdatedAt, tableName, queryId, cancellationToken);
+
+                /*
                 if (updatedAt.HasValue)
                 {
                     await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, updatedAt.Value, cancellationToken).ConfigureAwait(false);
-                }
+                }*/
                 SendPullFinishedEvent(tableName, itemCount, true);
             }
+        }
+
+        async Task<DateTimeOffset?> BatchUpsert(List<JObject> batchInserts, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken)
+        {
+            if (batchInserts.Any())
+            {
+                await OfflineStore.UpsertAsync(tableName, batchInserts.ToArray(), true, cancellationToken).ConfigureAwait(false);
+                batchInserts.Clear();
+                if (batchUpdatedAt.HasValue)
+                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken).ConfigureAwait(false);
+                return null;
+            }
+            return batchUpdatedAt;
+        }
+
+        async Task<DateTimeOffset?> BatchDelete(List<string> batchDeletes, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken)
+        {
+            if (batchDeletes.Any())
+            {
+                await OfflineStore.DeleteAsync(tableName, batchDeletes.ToArray(), cancellationToken).ConfigureAwait(false);
+                batchDeletes.Clear();
+                if (batchUpdatedAt.HasValue)
+                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken).ConfigureAwait(false);
+                return null;
+            }
+            return batchUpdatedAt;
         }
 
         /// <summary>
