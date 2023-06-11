@@ -424,7 +424,7 @@ namespace Microsoft.Datasync.Client.Offline
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : {ex} ");
-
+                P42.Serilog.QuickLog.QLog.Error(ex);
             }
             finally
             {
