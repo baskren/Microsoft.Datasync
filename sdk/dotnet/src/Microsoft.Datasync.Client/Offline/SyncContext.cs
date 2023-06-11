@@ -407,7 +407,7 @@ namespace Microsoft.Datasync.Client.Offline
 
                     itemCount++;
 
-                    System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : [{itemCount}]/[{expectedItems}]  [{(Xamarin.Essentials.MainThread.IsMainThread ? "!!!! MAIN THREAD !!!!" : string.Empty)}]");
+                    //System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : [{itemCount}]/[{expectedItems}]  [{(Xamarin.Essentials.MainThread.IsMainThread ? "!!!! MAIN THREAD !!!!" : string.Empty)}]");
 
                     /*
                     updatedAt = ServiceSerializer.GetUpdatedAt(item)?.ToUniversalTime();
