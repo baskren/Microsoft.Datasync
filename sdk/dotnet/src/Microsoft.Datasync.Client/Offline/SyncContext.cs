@@ -330,7 +330,7 @@ namespace Microsoft.Datasync.Client.Offline
             SendPullStartedEvent(tableName);
             long itemCount = 0;
             long expectedItems = -1;
-            DateTimeOffset? updatedAt = null;
+            //DateTimeOffset? updatedAt = null;
 
             var batchDeletes = new List<string>();
             var batchInserts = new List<JObject>();

@@ -3,6 +3,8 @@
 	<PropertyGroup>
 		<TargetFrameworks>net7.0;net7.0-android;net7.0-ios</TargetFrameworks>
 		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.19041.0;$(TargetFrameworks)</TargetFrameworks>
+	    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+		<Nullable>disable</Nullable>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -18,7 +20,6 @@
 	<PropertyGroup>
 		<DebugType>portable</DebugType>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
-		<LangVersion>9.0</LangVersion>
 		<NeutralLanguage>en-US</NeutralLanguage>
 	</PropertyGroup>
 
@@ -26,6 +27,7 @@
 		<DebugSymbols>true</DebugSymbols>
 	</PropertyGroup>
 	
+	<!--
 	<PropertyGroup Condition="$(TargetFramework.StartsWith('net7.0-'))">
 		<UseMauiEssentials>false</UseMauiEssentials>
 		<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">10.0</SupportedOSPlatformVersion>
@@ -36,6 +38,7 @@
 		<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows10'))">10.0.19041.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows10'))">10.0.19041.0</TargetPlatformMinVersion>
 	</PropertyGroup>
+	-->
 
 	<ItemGroup>
 		<None Include="Platforms\**\*.cs" />
@@ -95,9 +98,10 @@
 	<!-- IS THIS BLAZOR / WASM ??? 	-->
 	<ItemGroup Condition="$(TargetFramework.Equals('net7.0'))">
 		<Compile Include="Platforms\net6\*.cs" />
+		<!--
 		<PackageReference Include="Microsoft.JSInterop" Version="6.0.13" />
+		-->
 	</ItemGroup>
-
 	
 	<PropertyGroup Condition="$(TargetFramework.StartsWith('net7.0'))">
 		<DefineConstants>$(DefineConstants);HAS_DATEONLY;HAS_TIMEONLY</DefineConstants>
@@ -115,8 +119,8 @@
 
 	<!-- Common package requirements -->
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.9.17" />
-		<PackageReference Include="P42.Serilog.QuickLog" Version="1.0.4" />
+	    <PackageReference Include="Newtonsoft.Json" />
+		<PackageReference Include="P42.Serilog.QuickLog" />
 	</ItemGroup>
+
 </Project>

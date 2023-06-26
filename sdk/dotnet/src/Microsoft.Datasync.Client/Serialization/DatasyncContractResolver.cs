@@ -129,6 +129,7 @@ namespace Microsoft.Datasync.Client.Serialization
                         }
                         catch (Exception e1)
                         {
+                            P42.Serilog.QuickLog.QLog.Error(e1);
                             System.Diagnostics.Debug.WriteLine($"DatasyncContractResolver.CreateProperties : D1 type[{type}] .PropertyName=[{property.PropertyName}] .UnderlyingName=[{property.UnderlyingName}]  .PropertyType=[{property.PropertyType}]");
                             System.Diagnostics.Debug.WriteLine($"DatasyncContractResolver.CreateProperties : [{string.Join("][", relevantProperties.Select(p => p.Value.PropertyName))}]");
                             System.Diagnostics.Debug.WriteLine($"DatasyncContractResolver.CreateProperties : [{string.Join("][", relevantProperties.Select(p => p.Value.UnderlyingName))}]");
