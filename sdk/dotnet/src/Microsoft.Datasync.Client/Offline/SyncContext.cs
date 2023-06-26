@@ -217,6 +217,19 @@ namespace Microsoft.Datasync.Client.Offline
         }
 
         /// <summary>
+        /// Retrieve an item from the offline table.
+        /// </summary>
+        /// <param name="tableName">The name of the offline table.</param>
+        /// <param name="id">The ID of the item to retrieve.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns the item when complete.</returns>
+        public async Task<T> GetItemAsync<T>(string tableName, string id, CancellationToken cancellationToken = default) where T : IQuickDeseriable, new()
+        {
+            await EnsureContextIsInitializedAsync(cancellationToken).ConfigureAwait(false);
+            return await OfflineStore.GetItemAsync<T>(tableName, id, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Gets the next page of items from a query.
         /// </summary>
         /// <param name="query">The query.</param>
@@ -227,6 +240,19 @@ namespace Microsoft.Datasync.Client.Offline
             await EnsureContextIsInitializedAsync(cancellationToken).ConfigureAwait(false);
             var queryDescription = QueryDescription.Parse(tableName, query);
             return await OfflineStore.GetPageAsync(queryDescription, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Gets the next page of items from a query.
+        /// </summary>
+        /// <param name="query">The query.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns a page of items when complete.</returns>
+        public async Task<Page<T>> GetNextPageAsync<T>(string tableName, string query, CancellationToken cancellationToken = default) where T : IQuickDeseriable, new()
+        {
+            await EnsureContextIsInitializedAsync(cancellationToken).ConfigureAwait(false);
+            var queryDescription = QueryDescription.Parse(tableName, query);
+            return await OfflineStore.GetPageAsync<T>(queryDescription, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

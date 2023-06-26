@@ -102,6 +102,18 @@ namespace Microsoft.Datasync.Client.Table
         }
 
         /// <summary>
+        /// Retrieve an item from the offline table.
+        /// </summary>
+        /// <param name="id">The ID of the item to retrieve.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns the item when complete.</returns>
+        public Task<T> GetItemAsyncQuickly<T>(string id, CancellationToken cancellationToken = default) where T : IQuickDeseriable, new()
+        {
+            Arguments.IsValidId(id, nameof(id));
+            return _context.GetItemAsync<T>(TableName, id, cancellationToken);
+        }
+
+        /// <summary>
         /// Inserts an item into the offline table.
         /// </summary>
         /// <param name="instance">The instance to insert into the table.</param>
@@ -178,5 +190,16 @@ namespace Microsoft.Datasync.Client.Table
         /// <returns>A task that returns a page of items when complete.</returns>
         protected Task<Page<JObject>> GetNextPageAsync(string query, string nextLink, CancellationToken cancellationToken = default)
             => _context.GetNextPageAsync(TableName, nextLink != null ? new Uri(nextLink).Query.TrimStart('?') : query, cancellationToken);
+
+        /// <summary>
+        /// Gets the next page of items from the list.  If the <c>nextLink</c> is set, use that for
+        /// the query; otherwise use the <c>query</c>
+        /// </summary>
+        /// <param name="query">The initial query.</param>
+        /// <param name="nextLink">The next link.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns a page of items when complete.</returns>
+        protected Task<Page<T>> GetNextPageAsync<T>(string query, string nextLink, CancellationToken cancellationToken = default) where T : IQuickDeseriable, new()
+            => _context.GetNextPageAsync<T>(TableName, nextLink != null ? new Uri(nextLink).Query.TrimStart('?') : query, cancellationToken);
     }
 }

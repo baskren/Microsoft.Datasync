@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Datasync.Client.Table
 {
+
     /// <summary>
     /// Provides the operations that can be done against an offline table
     /// with strongly type models.
@@ -81,7 +82,7 @@ namespace Microsoft.Datasync.Client.Table
         /// Returns all instances from the table as an <see cref="IAsyncEnumerable{T}"/>.
         /// </summary>
         /// <returns>The list of items as an <see cref="IAsyncEnumerable{T}"/>.</returns>
-        public IAsyncEnumerable<T> GetAsyncItems()
+        public virtual IAsyncEnumerable<T> GetAsyncItems()
             => GetAsyncItems(CreateQuery());
 
         /// <summary>
@@ -94,6 +95,18 @@ namespace Microsoft.Datasync.Client.Table
         {
             Arguments.IsNotNull(query, nameof(query));
             return new FuncAsyncPageable<U>(nextLink => GetNextPageAsync(query, nextLink));
+        }
+
+        /// <summary>
+        /// Executes a query against the offline table.
+        /// </summary>
+        /// <typeparam name="U">The type of the items being returned by the query.</typeparam>
+        /// <param name="query">The query.</param>
+        /// <returns>The list of items as an <see cref="IAsyncEnumerable{T}"/>.</returns>
+        public IAsyncEnumerable<U> GetAsyncItemsQuickly<U>(ITableQuery<U> query) where U : IQuickDeseriable, new()
+        {
+            Arguments.IsNotNull(query, nameof(query));
+            return new FuncAsyncPageable<U>(nextLink => GetNextQuickPageAsync<U>(query, nextLink));
         }
 
         /// <summary>
@@ -330,5 +343,53 @@ namespace Microsoft.Datasync.Client.Table
                 NextLink = page.NextLink
             };
         }
+
+        /// <summary>
+        /// Gets the next page of items from the list.  If the <c>nextLink</c> is set, use that for
+        /// the query; otherwise use the <c>query</c>
+        /// </summary>
+        /// <param name="query">The initial query.</param>
+        /// <param name="nextLink">The next link.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns a page of items when complete.</returns>
+        private async Task<Page<U>> GetNextQuickPageAsync<U>(ITableQuery<U> query, string nextLink, CancellationToken cancellationToken = default) where U : IQuickDeseriable, new()
+        {
+            return await base.GetNextPageAsync<U>(((TableQuery<U>)query).ToODataString(true), nextLink, cancellationToken).ConfigureAwait(false);
+        }
+
     }
+
+    internal class OfflineQuickTable<T> : OfflineTable<T>, IOfflineQuickTable<T> where T : IQuickDeseriable, new()
+    {
+        /// <summary>
+        /// Creates a new <see cref="OfflineTable{T}"/> instance to perform
+        /// typed requests to an offline table.
+        /// </summary>
+        /// <param name="tableName">The name of the table.</param>
+        /// <param name="serviceClient">The service client that created this table.</param>
+        public OfflineQuickTable(string tableName, DatasyncClient serviceClient) : base(tableName, serviceClient)
+        {
+        }
+
+        /// <summary>
+        /// Returns all instances from the table as an <see cref="IAsyncEnumerable{T}"/>.
+        /// </summary>
+        /// <returns>The list of items as an <see cref="IAsyncEnumerable{T}"/>.</returns>
+        public override IAsyncEnumerable<T> GetAsyncItems()
+            => GetAsyncItemsQuickly<T>(CreateQuery());
+
+        /// <summary>
+        /// Retrieve an item from the remote table.
+        /// </summary>
+        /// <param name="id">The ID of the item to retrieve.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns the item when complete.</returns>
+        public new async Task<T> GetItemAsync(string id, CancellationToken cancellationToken)
+            => await GetItemAsyncQuickly<T>(id, cancellationToken).ConfigureAwait(false);
+        
+
+
+    }
+
+
 }

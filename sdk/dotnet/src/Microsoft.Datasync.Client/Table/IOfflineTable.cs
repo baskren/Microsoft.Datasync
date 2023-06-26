@@ -3,6 +3,7 @@
 
 using Microsoft.Datasync.Client.Offline;
 using Microsoft.Datasync.Client.Query;
+using Microsoft.Datasync.Client.Serialization;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Threading;
@@ -203,4 +204,10 @@ namespace Microsoft.Datasync.Client
         /// <returns>A task that returns when the operation is complete.</returns>
         Task ReplaceItemAsync(T instance, CancellationToken cancellationToken = default);
     }
+
+    public interface IOfflineQuickTable<T> where T : IQuickDeseriable, new()
+    {
+    }
+
+
 }

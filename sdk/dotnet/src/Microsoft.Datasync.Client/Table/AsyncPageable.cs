@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Datasync.Client.Serialization;
 
 namespace Microsoft.Datasync.Client.Table
 {
@@ -65,7 +66,7 @@ namespace Microsoft.Datasync.Client.Table
         /// The total number of items that would be returned by the query, if not for paging.
         /// This is populated only if the total count ($count=true) is requested on the query.
         /// </summary>
-        public long? Count { get; private set; }
+        public long? Count { get; protected set; }
     }
 
     /// <summary>
@@ -99,5 +100,30 @@ namespace Microsoft.Datasync.Client.Table
                 yield return pageResponse ?? new Page<T>();
             } while (requestUri != null);
         }
+
+    }
+
+    public abstract class AsyncQuickPageable<T> : AsyncPageable<T> where T : IQuickDeseriable, new()
+    {
+        /// <summary>
+        /// Enumerate the values in the collection asynchronously.  This may make multiple service requests.
+        /// </summary>
+        /// <param name="token">A <see cref="CancellationToken"/> used for requests made while enumerating asynchronously.</param>
+        /// <returns>An async sequence of values.</returns>
+        public override  async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token = default)
+        {
+            await foreach (Page<T> page in AsPages().ConfigureAwait(false).WithCancellation(token))
+            {
+                Count = page.Count;
+                if (page.Items != null)
+                {
+                    foreach (T value in page.Items)
+                    {
+                        yield return value;
+                    }
+                }
+            }
+        }
+
     }
 }

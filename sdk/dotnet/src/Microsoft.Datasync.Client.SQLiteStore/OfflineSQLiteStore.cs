@@ -152,6 +152,28 @@ namespace Microsoft.Datasync.Client.SQLiteStore
         }
 
         /// <summary>
+        /// Returns a single item by the ID of the item.
+        /// </summary>
+        /// <param name="tableName">The table name holding the item.</param>
+        /// <param name="id">The ID of the item.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns the item when complete.</returns>
+        public override async Task<T> GetItemAsync<T>(string tableName, string id, CancellationToken cancellationToken = default)
+        {
+            Arguments.IsValidTableName(tableName, true, nameof(tableName));
+            Arguments.IsValidId(id, nameof(id));
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            Dictionary<string, object> parameters = new[] { id }.ToParameterList("id");
+            string sql = SqlStatements.GetItemById(tableName, SystemProperties.JsonIdProperty, parameters.Keys.First());
+            using (operationLock.AcquireLock())
+            {
+                IList<T> results = ExecuteQueryInternal<T>(tableName, sql, parameters);
+                return results.FirstOrDefault();
+            }
+        }
+
+        /// <summary>
         /// Returns items from the table.
         /// </summary>
         /// <param name="query">A query describing the items to be returned.</param>
@@ -167,6 +189,32 @@ namespace Microsoft.Datasync.Client.SQLiteStore
             {
                 IList<JObject> rows = ExecuteQueryInternal(query.TableName, queryStmt, parameters);
                 Page<JObject> result = new() { Items = rows };
+                if (query.IncludeTotalCount)
+                {
+                    string countStmt = SqlStatements.CountFromTable(query, out Dictionary<string, object> countParams);
+                    IList<JObject> countRows = ExecuteQueryInternal(query.TableName, countStmt, countParams);
+                    result.Count = countRows[0].Value<long>("count");
+                }
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Returns items from the table.
+        /// </summary>
+        /// <param name="query">A query describing the items to be returned.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns a page of items when complete.</returns>
+        public override async Task<Page<T>> GetPageAsync<T>(QueryDescription query, CancellationToken cancellationToken = default)
+        {
+            Arguments.IsNotNull(query, nameof(query));
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            string queryStmt = SqlStatements.SelectFromTable(query, out Dictionary<string, object> parameters);
+            using (operationLock.AcquireLock())
+            {
+                IList<T> rows = ExecuteQueryInternal<T>(query.TableName, queryStmt, parameters);
+                Page<T> result = new() { Items = rows };
                 if (query.IncludeTotalCount)
                 {
                     string countStmt = SqlStatements.CountFromTable(query, out Dictionary<string, object> countParams);
@@ -427,6 +475,16 @@ namespace Microsoft.Datasync.Client.SQLiteStore
         /// <summary>
         /// Executes a SQL query.
         /// </summary>
+        /// <param name="tableName">The name of the table.</param>
+        /// <param name="sqlStatement">The SQL statement to execute.</param>
+        /// <param name="parameters">The parameters that are referenced in the SQL statement.</param>
+        /// <returns>The result of the query as a list of rows.</returns>
+        protected IList<T> ExecuteQueryInternal<T>(string tableName, string sqlStatement, Dictionary<string, object> parameters = null) where T : IQuickDeseriable, new()
+            => ExecuteQueryInternal<T>(GetTableOrThrow(tableName), sqlStatement, parameters);
+
+        /// <summary>
+        /// Executes a SQL query.
+        /// </summary>
         /// <param name="tableDefinition">The definition of the result set.</param>
         /// <param name="sqlStatement">The SQL statement to execute.</param>
         /// <param name="parameters">The parameters that are referenced in the SQL statement.</param>
@@ -459,6 +517,33 @@ namespace Microsoft.Datasync.Client.SQLiteStore
             return rows;
         }
 
+        /// <summary>
+        /// Executes a SQL query.
+        /// </summary>
+        /// <param name="tableDefinition">The definition of the result set.</param>
+        /// <param name="sqlStatement">The SQL statement to execute.</param>
+        /// <param name="parameters">The parameters that are referenced in the SQL statement.</param>
+        /// <returns>The result of the query as a list of rows.</returns>
+        protected IList<T> ExecuteQueryInternal<T>(TableDefinition tableDefinition, string sqlStatement, IDictionary<string, object> parameters = null) where T : IQuickDeseriable, new()
+        {
+            Arguments.IsNotNull(tableDefinition, nameof(tableDefinition));
+            Arguments.IsNotNullOrWhitespace(sqlStatement, nameof(sqlStatement));
+            parameters ??= new Dictionary<string, object>();
+
+            var rows = new List<T>();
+            using var statement = DbConnection.PrepareStatement(sqlStatement);
+            statement.BindParameters(parameters);
+            foreach (var row in statement.ExecuteQuery())
+            {
+                var item = new T();
+                foreach (var prop in row)
+                    if (prop.Value is not null)
+                        item.TrySetProperty(prop.Key.ToLower(), prop.Value);
+
+                rows.Add(item);
+            }
+            return rows;
+        }
         /// <summary>
         /// Obtains the table definition for a defined table, or throws if not available.
         /// </summary>

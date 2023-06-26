@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Microsoft.Datasync.Client.Query;
+using Microsoft.Datasync.Client.Serialization;
 using Microsoft.Datasync.Client.Table;
 using Microsoft.Datasync.Client.Utils;
 using Newtonsoft.Json.Linq;
@@ -56,12 +57,29 @@ namespace Microsoft.Datasync.Client.Offline
         public abstract Task<JObject> GetItemAsync(string tableName, string id, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Returns a single item by the ID of the item.
+        /// </summary>
+        /// <param name="tableName">The table name holding the item.</param>
+        /// <param name="id">The ID of the item.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns the item when complete.</returns>
+        public abstract Task<T> GetItemAsync<T>(string tableName, string id, CancellationToken cancellationToken = default) where T : IQuickDeseriable, new();
+
+        /// <summary>
         /// Returns items from the table.
         /// </summary>
         /// <param name="query">A query describing the items to be returned.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
         /// <returns>A task that returns a page of items when complete.</returns>
         public abstract Task<Page<JObject>> GetPageAsync(QueryDescription query, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns items from the table.
+        /// </summary>
+        /// <param name="query">A query describing the items to be returned.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that returns a page of items when complete.</returns>
+        public abstract Task<Page<T>> GetPageAsync<T>(QueryDescription query, CancellationToken cancellationToken = default) where T : IQuickDeseriable, new();
 
         /// <summary>
         /// Gets the list of offline tables that have been defined.
