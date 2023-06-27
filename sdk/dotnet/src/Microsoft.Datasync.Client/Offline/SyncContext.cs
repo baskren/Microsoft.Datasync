@@ -358,7 +358,8 @@ namespace Microsoft.Datasync.Client.Offline
             long expectedItems = -1;
             //DateTimeOffset? updatedAt = null;
 
-            var batchDeletes = new List<string>();
+            var batchDeleteIds = new List<string>();
+            var batchInsertIds = new List<string>();
             var batchInserts = new List<JObject>();
             DateTimeOffset? batchUpdatedAt = DateTimeOffset.MinValue;
 
@@ -418,12 +419,23 @@ namespace Microsoft.Datasync.Client.Offline
 
                     if (ServiceSerializer.IsDeleted(item))
                     {
-                        batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
-                        batchDeletes.Add(itemId);
+                        if (batchInserts.Any())
+                        {
+                            batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                            SendItemsWereStoredEvent(tableName, batchInsertIds, itemCount, expectedItems);
+                            batchInsertIds.Clear();
+                        }
+                        batchDeleteIds.Add(itemId);
                     }
                     else
                     {
-                        batchUpdatedAt = await BatchDelete(batchDeletes, batchUpdatedAt, tableName, queryId, cancellationToken);
+                        if (batchDeleteIds.Any())
+                        {
+                            batchUpdatedAt = await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+                            SendItemsWereStoredEvent(tableName, batchDeleteIds, itemCount, expectedItems);
+                            batchDeleteIds.Clear();
+                        }
+                        batchInsertIds.Add(itemId);
                         batchInserts.Add(item);
                     }
 
@@ -444,7 +456,7 @@ namespace Microsoft.Datasync.Client.Offline
                     }
                     */
                     
-                    SendItemWasStoredEvent(tableName, itemId, item, itemCount, expectedItems);
+                    //SendItemWasStoredEvent(tableName, itemId, item, itemCount, expectedItems);
                 }
             }
             catch (Exception ex)
@@ -454,9 +466,16 @@ namespace Microsoft.Datasync.Client.Offline
             }
             finally
             {
-                batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
-                batchUpdatedAt = await BatchDelete(batchDeletes, batchUpdatedAt, tableName, queryId, cancellationToken);
-
+                if (batchInserts.Any())
+                {
+                    batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                    SendItemsWereStoredEvent(tableName, batchInsertIds, itemCount, expectedItems);
+                }
+                if (batchDeleteIds.Any())
+                {
+                    batchUpdatedAt = await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+                    SendItemsWereStoredEvent(tableName, batchDeleteIds, itemCount, expectedItems);
+                }
                 /*
                 if (updatedAt.HasValue)
                 {
@@ -470,7 +489,7 @@ namespace Microsoft.Datasync.Client.Offline
         {
             if (batchInserts.Any())
             {
-                await OfflineStore.UpsertAsync(tableName, batchInserts.ToArray(), true, cancellationToken).ConfigureAwait(false);
+                await OfflineStore.UpsertAsync(tableName, batchInserts, true, cancellationToken).ConfigureAwait(false);
                 batchInserts.Clear();
                 if (batchUpdatedAt.HasValue)
                     await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken).ConfigureAwait(false);
@@ -483,7 +502,7 @@ namespace Microsoft.Datasync.Client.Offline
         {
             if (batchDeletes.Any())
             {
-                await OfflineStore.DeleteAsync(tableName, batchDeletes.ToArray(), cancellationToken).ConfigureAwait(false);
+                await OfflineStore.DeleteAsync(tableName, batchDeletes, cancellationToken).ConfigureAwait(false);
                 batchDeletes.Clear();
                 if (batchUpdatedAt.HasValue)
                     await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken).ConfigureAwait(false);
@@ -1066,6 +1085,19 @@ namespace Microsoft.Datasync.Client.Offline
                 Item = jobject,
                 IsSuccessful = true
             }) ;
+        }
+
+        private void SendItemsWereStoredEvent(string tableName, IList<string> itemIds, long itemCount, long expectedItems)
+        {
+            ServiceClient.SendSynchronizationEvent(new SetSynchronizationEventArgs
+            {
+                EventType = SynchronizationEventType.ItemWasStored,
+                ItemsProcessed = itemCount,
+                QueueLength = expectedItems,
+                TableName = tableName,
+                ItemIds = itemIds,
+                IsSuccessful = true
+            });
         }
 
         #endregion

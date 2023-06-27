@@ -57,4 +57,9 @@ namespace Microsoft.Datasync.Client.Offline
         /// </summary>
         public bool? IsSuccessful { get; internal set; }
     }
+
+    public class SetSynchronizationEventArgs : SynchronizationEventArgs
+    {
+        public IList<string> ItemIds { get; internal set; }
+    }
 }
