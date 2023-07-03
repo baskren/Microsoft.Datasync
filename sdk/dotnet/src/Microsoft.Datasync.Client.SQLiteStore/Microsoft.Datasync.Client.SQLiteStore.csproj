@@ -20,6 +20,9 @@
     <DebugType>portable</DebugType>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <NeutralLanguage>en-US</NeutralLanguage>
+
+	  <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally> 
+
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -27,7 +30,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.4" />
   </ItemGroup>
 
   <ItemGroup>
