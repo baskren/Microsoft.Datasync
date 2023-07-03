@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>net7.0</TargetFrameworks>
-		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.18362.0;$(TargetFrameworks)</TargetFrameworks>
+		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.19041.0;$(TargetFrameworks)</TargetFrameworks>
 		<Nullable>disable</Nullable>
   </PropertyGroup>
 
