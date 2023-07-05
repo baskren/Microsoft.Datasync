@@ -303,6 +303,57 @@ namespace Microsoft.Datasync.Client.SQLiteStore
                 ExecuteNonQueryInternal("COMMIT TRANSACTION");
             }
         }
+
+        /// <summary>
+        /// Updates or inserts the item(s) provided in the table.
+        /// </summary>
+        /// <param name="tableName">The table to be used for the operation.</param>
+        /// <param name="items">The item(s) to be updated or inserted.</param>
+        /// <param name="ignoreMissingColumns">If <c>true</c>, extra properties on the item can be ignored.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+        /// <returns>A task that completes when the item has been updated or inserted into the table.</returns>
+        public override async Task UpsertAsync<T>(string tableName, IEnumerable<T> cs_items, bool ignoreMissingColumns, CancellationToken cancellationToken = default) 
+        {
+            Arguments.IsValidTableName(tableName, true, nameof(tableName));
+            Arguments.IsNotNull(cs_items, nameof(cs_items));
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            var items = cs_items.Select(i => i.ToJObject());
+
+            TableDefinition table = GetTableOrThrow(tableName);
+            var first = items.FirstOrDefault();
+            if (first == null)
+            {
+                return;
+            }
+
+            var columns = new List<ColumnDefinition>();
+            foreach (var prop in first.Properties())
+            {
+                if (!table.TryGetValue(prop.Name, out ColumnDefinition column) && !ignoreMissingColumns)
+                {
+                    throw new InvalidOperationException($"Column '{prop.Name}' is not defined on table '{tableName}'");
+                }
+
+                if (column != null)
+                {
+                    columns.Add(column);
+                }
+            }
+
+            if (columns.Count == 0)
+            {
+                return;
+            }
+
+            using (operationLock.AcquireLock())
+            {
+                ExecuteNonQueryInternal("BEGIN TRANSACTION");
+                BatchInsert(tableName, items, columns.Where(c => c.IsIdColumn).Take(1).ToList());
+                BatchUpdate(tableName, items, columns);
+                ExecuteNonQueryInternal("COMMIT TRANSACTION");
+            }
+        }
         #endregion
 
         /// <summary>

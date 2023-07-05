@@ -35,7 +35,7 @@ namespace Microsoft.Datasync.Client.Offline
         /// </summary>
         public string ItemId { get; internal set; }
 
-        public JObject Item { get; internal set; }
+        public object Item { get; internal set; }
 
         /// <summary>
         /// When pulling records, the number of items that have been processed.
@@ -61,5 +61,7 @@ namespace Microsoft.Datasync.Client.Offline
     public class SetSynchronizationEventArgs : SynchronizationEventArgs
     {
         public IList<string> ItemIds { get; internal set; }
+
+        public System.Collections.IList Items { get; internal set; }
     }
 }

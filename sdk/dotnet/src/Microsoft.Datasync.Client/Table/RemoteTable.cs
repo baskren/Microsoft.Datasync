@@ -8,8 +8,10 @@ using Microsoft.Datasync.Client.Serialization;
 using Microsoft.Datasync.Client.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using P42.Utils;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -109,6 +111,10 @@ namespace Microsoft.Datasync.Client.Table
         public IAsyncEnumerable<JToken> GetAsyncItems(string query)
             => new FuncAsyncPageable<JToken>(nextLink => GetNextPageAsync(query, nextLink));
 
+
+        public IAsyncEnumerable<T> GetAsyncJsonReadableItems<T>(string query) where T : IBaseModel, new()
+            => new FuncAsyncJsonReadablePageable<T>(nextLink => GetNextPageAsync<T>(query, nextLink));
+
         /// <summary>
         /// Retrieve an item from the remote table.
         /// </summary>
@@ -206,7 +212,18 @@ namespace Microsoft.Datasync.Client.Table
                 UriPathAndQuery = requestUri ?? TableEndpoint + queryString,
                 EnsureResponseContent = true
             };
+
+            var stopWatch = new Stopwatch();
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : start");
+            stopWatch.Start();
             var response = await SendRequestAsync(request, cancellationToken).ConfigureAwait(false);
+            stopWatch.Stop();
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : elapsed [{stopWatch.ElapsedMilliseconds}]");
+
+
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JObject : start");
+            stopWatch.Reset();
+            stopWatch.Start();
             var result = new Page<JToken>();
             if (response is JArray array)
                 response = array[0];
@@ -240,6 +257,8 @@ namespace Microsoft.Datasync.Client.Table
                     result.NextLink = new Uri(response.Value<string>(Page.JsonNextLinkProperty));
                 }
             }
+            stopWatch.Stop();
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JObject : elapsed [{stopWatch.ElapsedMilliseconds}]");
             /*
             else if (response is JArray array)
             {
@@ -251,7 +270,9 @@ namespace Microsoft.Datasync.Client.Table
             return result;
         }
 
-        protected async Task<Page<JsonReader>> GetNextPageAsJsonReaderAsync(string query = "", string requestUri = null, CancellationToken cancellationToken = default)
+
+
+        protected async Task<JsonReadablePage<T>> GetNextPageAsync<T>(string query = "", string requestUri = null, CancellationToken cancellationToken = default) where T : IBaseModel, new()
         {
             string queryString = string.IsNullOrEmpty(query) ? string.Empty : $"?{query.TrimStart('?').TrimEnd()}";
             ServiceRequest request = new()
@@ -260,51 +281,21 @@ namespace Microsoft.Datasync.Client.Table
                 UriPathAndQuery = requestUri ?? TableEndpoint + queryString,
                 EnsureResponseContent = true
             };
-            var response = await SendRequestForJsonReaderAsync(request, cancellationToken).ConfigureAwait(false);
-            var result = new Page<JsonReader>();
 
-            /*
-            if (response is JArray array)
-                response = array[0];
+            var stopWatch = new Stopwatch();
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : start");
+            stopWatch.Start();
+            var reader = await SendRequestForJsonReaderAsync(request, cancellationToken).ConfigureAwait(false);
+            GC.Collect();
+            stopWatch.Stop();
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : elapsed [{stopWatch.ElapsedMilliseconds}]");
 
-            if (response is JObject)
-            {
-                if (response[Page.OdataItemsProperty] is JArray itemsArray)
-                {
-                    result.Items = itemsArray.ToList();
-                }
-                else if (response[Page.JsonItemsProperty]?.Type == JTokenType.Array)
-                {
-                    result.Items = ((JArray)response[Page.JsonItemsProperty] as JArray).ToList();
-                }
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JsonReadablePage<T> : start");
+            stopWatch.Restart();
+            var result = new JsonReadablePage<T>(reader);
+            stopWatch.Stop();
+            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JsonReadablePage<T> : elapsed [{stopWatch.ElapsedMilliseconds}]");
 
-                if (response[Page.OdataCountProperty]?.Type == JTokenType.Integer)
-                {
-                    result.Count = response.Value<long>(Page.OdataCountProperty);
-                }
-                else if (response[Page.JsonCountProperty]?.Type == JTokenType.Integer)
-                {
-                    result.Count = response.Value<long>(Page.JsonCountProperty);
-                }
-
-                if (response[Page.OdataNextLinkProperty]?.Type == JTokenType.String)
-                {
-                    result.NextLink = new Uri(response.Value<string>(Page.OdataNextLinkProperty));
-                }
-                else if (response[Page.JsonNextLinkProperty]?.Type == JTokenType.String)
-                {
-                    result.NextLink = new Uri(response.Value<string>(Page.JsonNextLinkProperty));
-                }
-            }
-            */
-            /*
-            else if (response is JArray array)
-            {
-                result.Items = array.ToList();
-                result.Count = array.Count;
-                //result.NextLink = array.Next;
-            }
-            */
             return result;
         }
 
@@ -329,7 +320,13 @@ namespace Microsoft.Datasync.Client.Table
         {
             if (response.HasContent)
             {
+
+                var stopWatch = new Stopwatch();
+                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetJTokenFromResponse : start [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
+                stopWatch.Start();
                 JToken token = JsonConvert.DeserializeObject<JToken>(response.Content, ServiceClient.Serializer.SerializerSettings);
+                stopWatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetJTokenFromResponse : elapsed time [{stopWatch.ElapsedMilliseconds}] [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
                 if (response.ETag != null)
                 {
                     token[SystemProperties.JsonVersionProperty] = response.ETag.GetVersion();
@@ -350,8 +347,19 @@ namespace Microsoft.Datasync.Client.Table
         {
             try
             {
+                var stopWatch = new Stopwatch();
+                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>:.SendRequestAsync : ServiceClient.HttpClient.SendAsync : start [{(Xamarin.Essentials.MainThread.IsMainThread?"IsMainThread":string.Empty)}] ");
+                stopWatch.Start();
                 var response = await ServiceClient.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                return GetJTokenFromResponse(response);
+                stopWatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : ServiceClient.HttpClient.SendAsync : elapsed time [{stopWatch.ElapsedMilliseconds}] [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
+                stopWatch.Reset();
+                stopWatch.Start();
+                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : GetJTokenFromResponse : start [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
+                var result = GetJTokenFromResponse(response);
+                stopWatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : GetJTokenFromResponse : elapsed time [{stopWatch.ElapsedMilliseconds}] [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
+                return result;
             }
             catch (DatasyncInvalidOperationException ex) when (ex.IsConflictStatusCode())
             {
@@ -373,11 +381,14 @@ namespace Microsoft.Datasync.Client.Table
             {
                 var response = await ServiceClient.HttpClient.SendForHttpResponseAsync(request, cancellationToken).ConfigureAwait(false);
 
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                using var streamReader = new System.IO.StreamReader(responseStream);
-                using var reader = new JsonTextReader(streamReader);
+                var responseStream = await response.Content.ReadAsStreamAsync();
+                var streamReader = new System.IO.StreamReader(responseStream);
+                var reader = new JsonTextReader(streamReader);
 
-                response.Dispose();
+                reader.CloseInput = true;
+                reader.SupportMultipleContent = true;   
+                //  var state = reader.CurrentState;
+                //response.Dispose();
 
                 return reader;
             }

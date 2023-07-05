@@ -115,6 +115,8 @@ namespace Microsoft.Datasync.Client.Offline
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
         /// <returns>A task that completes when the item has been updated or inserted into the table.</returns>
         public abstract Task UpsertAsync(string tableName, IEnumerable<JObject> items, bool ignoreMissingColumns, CancellationToken cancellationToken = default);
+
+        public abstract Task UpsertAsync<T>(string tableName, IEnumerable<T> items, bool ignoreMissingColumns, CancellationToken cancellationToken = default) where T : IBaseModel, new();
         #endregion
 
         /// <summary>

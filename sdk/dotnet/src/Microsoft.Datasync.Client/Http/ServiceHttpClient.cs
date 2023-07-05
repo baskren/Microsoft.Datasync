@@ -136,7 +136,7 @@ namespace Microsoft.Datasync.Client.Http
             HttpRequestMessage request = serviceRequest.ToHttpRequestMessage();
 
             var reqIndex = requestIndex++;
-            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  REQUEST [{reqIndex}] ENTER ==================");
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  REQUEST [{reqIndex}] ENTER ================== MainThread [{Xamarin.Essentials.MainThread.IsMainThread}]");
             System.Diagnostics.Debug.WriteLine($"[{reqIndex}] METHOD:           {request.Method}");
             if (request.Options.Any())
             {
@@ -198,8 +198,7 @@ namespace Microsoft.Datasync.Client.Http
                 }
             }
 
-            //var content = await response.Content.ReadAsStringAsync();
-            //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {content}");
+            //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {await response.Content.ReadAsStringAsync()}");
 
             System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : VALID RESPONSE");
 

@@ -22,7 +22,7 @@ namespace Microsoft.Datasync.Client.SQLiteStore
         /// <param name="storeType">The stored type</param>
         public ColumnDefinition(string name, JTokenType jsonType, string storeType)
         {
-            Name = name;
+            Name = name.ToLower();
             JsonType = jsonType;
             StoreType = storeType;
         }

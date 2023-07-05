@@ -178,6 +178,8 @@ namespace Microsoft.Datasync.Client
         /// <returns>A task that completes when the pull operation has finished.</returns>
         Task PullItemsAsync<U>(ITableQuery<U> query, PullOptions options, CancellationToken cancellationToken = default);
 
+        Task PullJsonReadableItemsAsync<U>(ITableQuery<U> query, PullOptions options, CancellationToken cancellationToken = default) where U : notnull, IBaseModel, new();
+
         /// <summary>
         /// Deletes all the items in the offline table that match the query.
         /// </summary>

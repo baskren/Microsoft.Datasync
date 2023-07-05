@@ -11,8 +11,10 @@ using Microsoft.Datasync.Client.Serialization;
 using Microsoft.Datasync.Client.Table;
 using Microsoft.Datasync.Client.Utils;
 using Newtonsoft.Json.Linq;
+using P42.Utils;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -301,6 +303,177 @@ namespace Microsoft.Datasync.Client.Offline
         #endregion
 
         #region Data synchronization methods
+
+        public async Task PullJsonReadableItemsAsync<T>(string tableName, string query, PullOptions options, CancellationToken cancellationToken = default) where T : IBaseModel, new()
+        {
+            Arguments.IsValidTableName(tableName, nameof(tableName));
+            Arguments.IsNotNull(query, nameof(query));
+            Arguments.IsNotNull(options, nameof(options));
+            await EnsureContextIsInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            var table = new RemoteTable(tableName, ServiceClient); // We need the RemoteTable, not the IRemoteTable here.
+            var queryId = options.QueryId ?? GetQueryIdFromQuery(tableName, query);
+            var queryDescription = QueryDescription.Parse(tableName, query);
+            string[] relatedTables = options.PushOtherTables ? null : new string[] { tableName };
+
+            if (queryDescription.Selection.Count > 0 || queryDescription.Projections.Count > 0)
+            {
+                throw new ArgumentException("Pull query with select clause is not supported.", nameof(query));
+            }
+
+            queryDescription.Ordering.Clear();
+            queryDescription.Top = null;
+            queryDescription.Skip = null;
+            queryDescription.IncludeTotalCount = false;
+
+            if (await TableIsDirtyAsync(tableName, cancellationToken).ConfigureAwait(false))
+            {
+                await PushContext.PushItemsAsync(relatedTables, cancellationToken).ConfigureAwait(false);
+
+                // If the table is still dirty, then throw an error.
+                if (await TableIsDirtyAsync(tableName, cancellationToken).ConfigureAwait(false))
+                {
+                    throw new DatasyncInvalidOperationException($"There are still pending operations for table '{tableName}' after a push");
+                }
+            }
+
+            var deltaToken = await DeltaTokenStore.GetDeltaTokenAsync(tableName, queryId, cancellationToken).ConfigureAwait(false);
+            var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
+            queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+            queryDescription.IncludeTotalCount = true;
+            queryDescription.Ordering.Add(new OrderByNode(new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), true));
+            Dictionary<string, string> parameters = new()
+            {
+                { ODataOptions.IncludeDeleted, "true" }
+            };
+
+            var odataString = queryDescription.ToODataString(parameters);
+            SendPullStartedEvent(tableName);
+            long itemCount = 0;
+            int setCount = 0;
+            long expectedItems = -1;
+
+            var batchDeleteIds = new List<string>();
+            var batchInserts = new List<T>();
+            DateTimeOffset? batchUpdatedAt = DateTimeOffset.MinValue;
+
+            var stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+            System.Diagnostics.Debug.WriteLine($"SyncContext.PullJsonReadableItemsAsync : table<{tableName}>.GetAyncItems start");
+            var enumerable = table.GetAsyncJsonReadableItems<T>(odataString);
+            System.Diagnostics.Debug.WriteLine($"SyncContext.PullJsonReadableItemsAsync : table<{tableName}>.GetAsyncItems elapsed [{stopwatch.ElapsedMilliseconds}] ");
+            stopwatch.Stop();
+
+            try
+            {
+                await foreach (var instance in enumerable)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // If we have not read the expectedItem count yet, then read it from the pageable.
+                    if (expectedItems == -1 && enumerable is FuncAsyncJsonReadablePageable<T> pageable)
+                        expectedItems = pageable.Count ?? -1;
+                    
+                    if (string.IsNullOrWhiteSpace(instance.Id))
+                    {
+                        SendPullFinishedEvent(tableName, itemCount, false);
+                        throw new DatasyncInvalidOperationException($"Received an item without an ID : [{tableName}]");
+                    }
+
+                    var pendingOperation = await OperationsQueue.GetOperationByItemIdAsync(tableName, instance.Id, cancellationToken).ConfigureAwait(false);
+                    if (pendingOperation != null)
+                    {
+                        SendPullFinishedEvent(tableName, itemCount, false);
+                        throw new InvalidOperationException($"Received an item for which there is a pending operation. : [{tableName}]");
+                    }
+                    SendItemWillBeStoredEvent(tableName, instance.Id, instance, itemCount, expectedItems);
+
+                    if (setCount == 500)
+                    {
+                        setCount = 0;
+                        if (batchInserts.Any())
+                        {
+                            batchUpdatedAt = await BatchUpsert(itemCount, expectedItems, batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                            batchInserts = new List<T>();
+                        }
+                        if (batchDeleteIds.Any())
+                        {
+                            batchUpdatedAt = await BatchDelete(itemCount, expectedItems, batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+                            batchDeleteIds = new List<string>();
+                        }
+                    }
+
+                    if (instance.Deleted)
+                    {
+                        if (batchInserts.Any())
+                        {
+                            batchUpdatedAt = await BatchUpsert(itemCount, expectedItems, batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                            batchInserts = new List<T>();
+                        }
+                        batchDeleteIds.Add(instance.Id);
+                    }
+                    else
+                    {
+                        if (batchDeleteIds.Any())
+                        {
+                            batchUpdatedAt = await BatchDelete(itemCount, expectedItems, batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+                            batchDeleteIds = new List<string>();
+                        }
+                        batchInserts.Add(instance);
+                    }
+
+                    var itemUpdatedAt = instance.UpdatedAt.ToUniversalTime();
+                    if (itemUpdatedAt > batchUpdatedAt)
+                        batchUpdatedAt = itemUpdatedAt;
+
+                    itemCount++;
+                    setCount++;
+
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : {ex} ");
+                P42.Serilog.QuickLog.QLog.Error(ex);
+            }
+            finally
+            {
+                if (batchInserts.Any())
+                    batchUpdatedAt = await BatchUpsert(itemCount, expectedItems, batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
+                if (batchDeleteIds.Any())
+                    await BatchDelete(itemCount, expectedItems, batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+
+                SendPullFinishedEvent(tableName, itemCount, true);
+            }
+        }
+
+
+
+        async Task<DateTimeOffset?> BatchUpsert<T>(long itemCount, long expectedItems, List<T> batchInserts, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken) where T : IBaseModel, new()
+        {
+            if (batchInserts.Any())
+            {
+                await OfflineStore.UpsertAsync(tableName, batchInserts, true, cancellationToken);//.ConfigureAwait(false);
+                if (batchUpdatedAt.HasValue)
+                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken);//.ConfigureAwait(false);
+                SendItemsWereStoredEvent(tableName, null, batchInserts, itemCount, expectedItems);
+                return null;
+            }
+            return batchUpdatedAt;
+        }
+
+        async Task<DateTimeOffset?> BatchDelete(long itemCount, long expectedItems, List<string> batchDeleteIds, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken) 
+        {
+            if (batchDeleteIds.Any())
+            {
+                await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+                SendItemsWereStoredEvent(tableName, batchDeleteIds, null, itemCount, expectedItems);
+                return null;
+            }
+            return batchUpdatedAt;
+        }
+
+
         /// <summary>
         /// Pulls the items matching the provided query from the remote table.
         /// </summary>
@@ -365,9 +538,8 @@ namespace Microsoft.Datasync.Client.Offline
 
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
-
+            System.Diagnostics.Debug.WriteLine($"SyncContext.PullItemsAsync : table<{tableName}>.GetAyncItems start");
             var enumerable = table.GetAsyncItems(odataString);
-
             System.Diagnostics.Debug.WriteLine($"SyncContext.PullItemsAsync : table<{tableName}>.GetAsyncItems elapsed [{stopwatch.ElapsedMilliseconds}] ");
             stopwatch.Stop();
 
@@ -422,8 +594,8 @@ namespace Microsoft.Datasync.Client.Offline
                         if (batchInserts.Any())
                         {
                             batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
-                            SendItemsWereStoredEvent(tableName, batchInsertIds, itemCount, expectedItems);
-                            batchInsertIds.Clear();
+                            SendItemsWereStoredEvent(tableName, batchInsertIds, null, itemCount, expectedItems);
+                            batchInsertIds = new List<string>();
                         }
                         batchDeleteIds.Add(itemId);
                     }
@@ -432,8 +604,8 @@ namespace Microsoft.Datasync.Client.Offline
                         if (batchDeleteIds.Any())
                         {
                             batchUpdatedAt = await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
-                            SendItemsWereStoredEvent(tableName, batchDeleteIds, itemCount, expectedItems);
-                            batchDeleteIds.Clear();
+                            SendItemsWereStoredEvent(tableName, batchDeleteIds, null, itemCount, expectedItems);
+                            batchDeleteIds = new List<string>();
                         }
                         batchInsertIds.Add(itemId);
                         batchInserts.Add(item);
@@ -469,12 +641,12 @@ namespace Microsoft.Datasync.Client.Offline
                 if (batchInserts.Any())
                 {
                     batchUpdatedAt = await BatchUpsert(batchInserts, batchUpdatedAt, tableName, queryId, cancellationToken);
-                    SendItemsWereStoredEvent(tableName, batchInsertIds, itemCount, expectedItems);
+                    SendItemsWereStoredEvent(tableName, batchInsertIds, null, itemCount, expectedItems);
                 }
                 if (batchDeleteIds.Any())
                 {
                     batchUpdatedAt = await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
-                    SendItemsWereStoredEvent(tableName, batchDeleteIds, itemCount, expectedItems);
+                    SendItemsWereStoredEvent(tableName, batchDeleteIds, null, itemCount, expectedItems);
                 }
                 /*
                 if (updatedAt.HasValue)
@@ -483,16 +655,29 @@ namespace Microsoft.Datasync.Client.Offline
                 }*/
                 SendPullFinishedEvent(tableName, itemCount, true);
             }
+
+            GC.Collect();
         }
 
         async Task<DateTimeOffset?> BatchUpsert(List<JObject> batchInserts, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken)
         {
             if (batchInserts.Any())
             {
+                System.Diagnostics.Debug.WriteLine($"SyncContext.BatchUpsert : [{tableName}] [{batchInserts.Count}] : start  [{Xamarin.Essentials.MainThread.IsMainThread}]");
+                var stopwatch = new Stopwatch();
+                stopwatch.Start();
                 await OfflineStore.UpsertAsync(tableName, batchInserts, true, cancellationToken).ConfigureAwait(false);
+                stopwatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"SyncContext.BatchUpsert : [{tableName}] [{batchInserts.Count}] : end [{stopwatch.ElapsedMilliseconds}] [{Xamarin.Essentials.MainThread.IsMainThread}]");
                 batchInserts.Clear();
                 if (batchUpdatedAt.HasValue)
+                {
+                    System.Diagnostics.Debug.WriteLine($"SyncContext.SetDeltaTokenAsync : [{tableName}] [{batchInserts.Count}] : start  [{Xamarin.Essentials.MainThread.IsMainThread}]");
+                    stopwatch.Restart();
                     await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    System.Diagnostics.Debug.WriteLine($"SyncContext.SetDeltaTokenAsync : [{tableName}] [{batchInserts.Count}] : end [{stopwatch.ElapsedMilliseconds}] [{Xamarin.Essentials.MainThread.IsMainThread}]");
+                }
                 return null;
             }
             return batchUpdatedAt;
@@ -1031,7 +1216,7 @@ namespace Microsoft.Datasync.Client.Offline
             });
         }
 
-        private void SendItemWillBePushedEvent(string tableName, string itemId, JObject jobject, long itemCount)
+        private void SendItemWillBePushedEvent(string tableName, string itemId, object jobject, long itemCount)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -1045,7 +1230,7 @@ namespace Microsoft.Datasync.Client.Offline
             });
         }
 
-        private void SendItemWasPushedEvent(string tableName, string itemId, JObject jobject, long itemCount, bool success)
+        private void SendItemWasPushedEvent(string tableName, string itemId, object jobject, long itemCount, bool success)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -1059,7 +1244,7 @@ namespace Microsoft.Datasync.Client.Offline
             });
         }
 
-        private void SendItemWillBeStoredEvent(string tableName, string itemId, JObject jobject, long itemCount, long expectedItems)
+        private void SendItemWillBeStoredEvent(string tableName, string itemId, object jobject, long itemCount, long expectedItems)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -1073,7 +1258,7 @@ namespace Microsoft.Datasync.Client.Offline
             });
         }
 
-        private void SendItemWasStoredEvent(string tableName, string itemId, JObject jobject, long itemCount, long expectedItems)
+        private void SendItemWasStoredEvent(string tableName, string itemId, object jobject, long itemCount, long expectedItems)
         {
             ServiceClient.SendSynchronizationEvent(new SynchronizationEventArgs
             {
@@ -1087,7 +1272,7 @@ namespace Microsoft.Datasync.Client.Offline
             }) ;
         }
 
-        private void SendItemsWereStoredEvent(string tableName, IList<string> itemIds, long itemCount, long expectedItems)
+        private void SendItemsWereStoredEvent(string tableName, IList<string> itemIds, System.Collections.IList items, long itemCount, long expectedItems)
         {
             ServiceClient.SendSynchronizationEvent(new SetSynchronizationEventArgs
             {
@@ -1096,9 +1281,12 @@ namespace Microsoft.Datasync.Client.Offline
                 QueueLength = expectedItems,
                 TableName = tableName,
                 ItemIds = itemIds,
+                Items = items,
                 IsSuccessful = true
             });
         }
+
+
 
         #endregion
 

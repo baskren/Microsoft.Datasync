@@ -5,6 +5,7 @@ using Microsoft.Datasync.Client.Offline;
 using Microsoft.Datasync.Client.Serialization;
 using Microsoft.Datasync.Client.Utils;
 using Newtonsoft.Json.Linq;
+using P42.Utils;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -141,6 +142,9 @@ namespace Microsoft.Datasync.Client.Table
         /// <returns>A task that completes when the pull operation has finished.</returns>
         public Task PullItemsAsync(string query, PullOptions options, CancellationToken cancellationToken = default)
             => _context.PullItemsAsync(TableName, query, options, cancellationToken);
+
+        public Task PullJsonReadableItemsAsync<U>(string query, PullOptions options, CancellationToken cancellationToken = default) where U : notnull, IBaseModel, new()
+            => _context.PullJsonReadableItemsAsync<U>(TableName, query, options, cancellationToken);
 
         /// <summary>
         /// Deletes all the items in the offline table that match the query.

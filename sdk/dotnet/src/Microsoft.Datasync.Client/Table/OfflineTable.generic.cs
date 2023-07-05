@@ -149,7 +149,13 @@ namespace Microsoft.Datasync.Client.Table
             Arguments.IsNotNull(query, nameof(query));
             return PullItemsAsync(((TableQuery<T>)query).ToODataString(true), options, cancellationToken);
         }
-
+        
+        public Task PullJsonReadableItemsAsync<U>(ITableQuery<U> query, PullOptions options, CancellationToken cancellationToken = default) where U : notnull, IBaseModel, new()
+        {
+            Arguments.IsNotNull(query, nameof(query));
+            return PullJsonReadableItemsAsync<U>(((TableQuery<T>)query).ToODataString(true), options, cancellationToken);
+        }
+        
         /// <summary>
         /// Deletes all the items in the offline table that match the query.
         /// </summary>

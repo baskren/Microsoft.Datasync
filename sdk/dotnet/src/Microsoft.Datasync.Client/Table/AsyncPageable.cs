@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Datasync.Client.Serialization;
+using P42.Utils;
 
 namespace Microsoft.Datasync.Client.Table
 {
@@ -79,7 +80,7 @@ namespace Microsoft.Datasync.Client.Table
         /// <summary>
         /// The internal storage for the paging function to call for the next page.
         /// </summary>
-        private readonly Func<string, Task<Page<T>>> _pageFunc;
+        private Func<string, Task<Page<T>>> _pageFunc;
 
         /// <summary>
         /// Creates a new <see cref="AsyncPageable{T}"/> with a function iterator.
@@ -102,6 +103,33 @@ namespace Microsoft.Datasync.Client.Table
         }
 
     }
+
+
+    internal class FuncAsyncJsonReadablePageable<T> : AsyncPageable<T> where T : notnull, IBaseModel, new()
+    {
+        /// <summary>
+        /// The internal storage for the paging function to call for the next page.
+        /// </summary>
+        private Func<string, Task<JsonReadablePage<T>>> _pageFunc;
+
+        public FuncAsyncJsonReadablePageable(Func<string, Task<JsonReadablePage<T>>> pageFunc) 
+        {
+            _pageFunc = pageFunc;
+        }
+
+        /// <inheritdoc />
+        public override async IAsyncEnumerable<Page<T>> AsPages(string requestUri = default)
+        {
+            do
+            {
+                Page<T> pageResponse = await _pageFunc(requestUri).ConfigureAwait(false);
+                requestUri = pageResponse.NextLink?.ToString();
+                yield return pageResponse ?? new Page<T>();
+            } while (requestUri != null);
+        }
+
+    }
+
 
     public abstract class AsyncQuickPageable<T> : AsyncPageable<T> where T : IQuickDeseriable, new()
     {
