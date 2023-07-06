@@ -424,7 +424,11 @@ namespace Microsoft.Datasync.Client.Offline
 
                     var itemUpdatedAt = instance.UpdatedAt.ToUniversalTime();
                     if (itemUpdatedAt > batchUpdatedAt)
+                    {
                         batchUpdatedAt = itemUpdatedAt;
+                        System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullJsonReadableItemsAsync : batchUpdateAt [{batchUpdatedAt}]");
+
+                    }
 
                     itemCount++;
                     setCount++;
@@ -433,7 +437,7 @@ namespace Microsoft.Datasync.Client.Offline
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullItemsAsync : {ex} ");
+                System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullJsonReadableItemsAsync : {ex} ");
                 P42.Serilog.QuickLog.QLog.Error(ex);
             }
             finally
@@ -467,6 +471,8 @@ namespace Microsoft.Datasync.Client.Offline
             if (batchDeleteIds.Any())
             {
                 await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
+                if (batchUpdatedAt.HasValue)
+                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken);//.ConfigureAwait(false);
                 SendItemsWereStoredEvent(tableName, batchDeleteIds, null, itemCount, expectedItems);
                 return null;
             }
