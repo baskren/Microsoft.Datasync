@@ -286,7 +286,7 @@ namespace Microsoft.Datasync.Client.Table
             System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : start");
             stopWatch.Start();
             var reader = await SendRequestForJsonReaderAsync(request, cancellationToken).ConfigureAwait(false);
-            GC.Collect();
+            //GC.Collect();
             stopWatch.Stop();
             System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : elapsed [{stopWatch.ElapsedMilliseconds}]");
 

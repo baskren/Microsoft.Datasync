@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Newtonsoft.Json;
 using P42.Utils;
 
@@ -130,7 +131,12 @@ namespace Microsoft.Datasync.Client.Table
         {
             PropertiesFrom(reader);
             reader.Close();
-            GC.Collect();
+
+            System.Diagnostics.Debug.WriteLine($"JsonReadablePage.ctr:  GARBAGE COLLECTION START");
+            var stopwatch = Stopwatch.StartNew();
+            System.GC.Collect();
+            stopwatch.Stop();
+            System.Diagnostics.Debug.WriteLine($"JsonReadablePage.ctr :  GARBAGE COLLECTION END [{stopwatch.ElapsedMilliseconds}]");
         }
 
         public void PropertiesFrom(JsonReader reader)

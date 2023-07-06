@@ -662,7 +662,11 @@ namespace Microsoft.Datasync.Client.Offline
                 SendPullFinishedEvent(tableName, itemCount, true);
             }
 
-            GC.Collect();
+            System.Diagnostics.Debug.WriteLine($"SyncContext.Offline :  GARBAGE COLLECTION START");
+            stopwatch = Stopwatch.StartNew();
+            System.GC.Collect();
+            stopwatch.Stop();
+            System.Diagnostics.Debug.WriteLine($"SyncContext.Offline :  GARBAGE COLLECTION END [{stopwatch.ElapsedMilliseconds}]");
         }
 
         async Task<DateTimeOffset?> BatchUpsert(List<JObject> batchInserts, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken)
