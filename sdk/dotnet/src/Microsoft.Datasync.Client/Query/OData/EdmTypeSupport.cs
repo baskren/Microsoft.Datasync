@@ -15,8 +15,8 @@ namespace Microsoft.Datasync.Client.Query.OData
         /// <summary>
         /// The format of the date/time transition (in universal time).
         /// </summary>
-        private const string DateTimeFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffZ";
-
+        //private const string DateTimeFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffZ";
+        private const string DateTimeFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fff zzz";
 #if HAS_DATEONLY
         /// <summary>
         /// The format for the DateOnly type
@@ -100,22 +100,26 @@ namespace Microsoft.Datasync.Client.Query.OData
 #if HAS_DATEONLY
                 case EdmType.Date:
                     formattedString = ((DateOnly)value).ToString(DateOnlyFormat);
-                    result = $"cast({formattedString},Edm.Date)";
+                    //result = $"cast({formattedString},Edm.Date)";
+                    result = formattedString;
                     break;
 #endif
 #if HAS_TIMEONLY
                 case EdmType.TimeOfDay:
                     formattedString = ((TimeOnly)value).ToString(TimeOnlyFormat);
-                    result = $"cast({formattedString},Edm.TimeOfDay)";
+                    //result = $"cast({formattedString},Edm.TimeOfDay)";
+                    result = formattedString;
                     break;
 #endif
                 case EdmType.DateTime:
                     formattedString = new DateTimeOffset(((DateTime)value).ToUniversalTime()).ToString(DateTimeFormat);
-                    result = $"cast({formattedString},Edm.DateTimeOffset)";
+                    //result = $"cast({formattedString},Edm.DateTimeOffset)";
+                    result = formattedString;
                     break;
                 case EdmType.DateTimeOffset:
                     formattedString = ((DateTimeOffset)value).ToUniversalTime().ToString(DateTimeFormat);
-                    result = $"cast({formattedString},Edm.DateTimeOffset)";
+                    //result = $"cast({formattedString},Edm.DateTimeOffset)";
+                    result = formattedString;
                     break;
                 case EdmType.Guid:
                     formattedString = string.Format("{0:D}", (Guid)value);
