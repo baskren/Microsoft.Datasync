@@ -309,11 +309,15 @@ namespace Microsoft.Datasync.Client.Table
         /// <param name="nextLink">The link to the next page of items (for subsequent requests).</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
         /// <returns>A task that returns a page of items when complete.</returns>
-        internal async Task<Page<U>> GetNextPageAsync<U>(string query, string nextLink, CancellationToken cancellationToken = default)
+        internal async new Task<Page<U>> GetNextPageAsync<U>(string query, string nextLink, CancellationToken cancellationToken = default)
         {
             Page<JToken> json = await base.GetNextPageAsync(query, nextLink, cancellationToken).ConfigureAwait(false);
-            Page<U> result = new() { Count = json.Count, NextLink = json.NextLink };
-            result.Items = json.Items?.Select(item => ServiceClient.Serializer.Deserialize<U>(item));
+            Page<U> result = new()
+            {
+                Count = json.Count,
+                NextLink = json.NextLink,
+                Items = json.Items?.Select(item => ServiceClient.Serializer.Deserialize<U>(item))
+            };
             return result;
         }
 

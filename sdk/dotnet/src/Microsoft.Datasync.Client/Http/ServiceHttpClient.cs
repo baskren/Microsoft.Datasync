@@ -183,6 +183,9 @@ namespace Microsoft.Datasync.Client.Http
                     throw new DatasyncInvalidOperationException("The server did not provide a response with the expected content.", request, response);
                 }
 
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] HasContent: {response.HasContent()}  IsCompressed: {response.HasContent()}");
+
+
                 if (response.HasContent() && !response.IsCompressed())
                 {
                     long? contentLength = response.Content.Headers.ContentLength;
@@ -197,6 +200,7 @@ namespace Microsoft.Datasync.Client.Http
                     }
                 }
             }
+
 
             //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {await response.Content.ReadAsStringAsync()}");
 

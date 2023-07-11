@@ -338,8 +338,12 @@ namespace Microsoft.Datasync.Client.Offline
             }
 
             var deltaToken = await DeltaTokenStore.GetDeltaTokenAsync(tableName, queryId, cancellationToken).ConfigureAwait(false);
-            var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
-            queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+            if (deltaToken != DateTimeOffset.UnixEpoch)
+            {
+                var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
+                queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+            }
+
             queryDescription.IncludeTotalCount = true;
             queryDescription.Ordering.Add(new OrderByNode(new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), true));
             Dictionary<string, string> parameters = new()
@@ -359,7 +363,7 @@ namespace Microsoft.Datasync.Client.Offline
 
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
-            System.Diagnostics.Debug.WriteLine($"SyncContext.PullJsonReadableItemsAsync : table<{tableName}>.GetAyncItems start");
+            //System.Diagnostics.Debug.WriteLine($"SyncContext.PullJsonReadableItemsAsync : table<{tableName}>.GetAyncItems start");
             var enumerable = table.GetAsyncJsonReadableItems<T>(odataString);
             System.Diagnostics.Debug.WriteLine($"SyncContext.PullJsonReadableItemsAsync : table<{tableName}>.GetAsyncItems elapsed [{stopwatch.ElapsedMilliseconds}] ");
             stopwatch.Stop();
@@ -426,7 +430,7 @@ namespace Microsoft.Datasync.Client.Offline
                     if (itemUpdatedAt > batchUpdatedAt)
                     {
                         batchUpdatedAt = itemUpdatedAt;
-                        System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullJsonReadableItemsAsync : batchUpdateAt [{batchUpdatedAt}]");
+                        //System.Diagnostics.Debug.WriteLine($"SyncContext[{tableName}].PullJsonReadableItemsAsync : batchUpdateAt [{batchUpdatedAt}]");
 
                     }
 
@@ -522,8 +526,12 @@ namespace Microsoft.Datasync.Client.Offline
             }
 
             var deltaToken = await DeltaTokenStore.GetDeltaTokenAsync(tableName, queryId, cancellationToken).ConfigureAwait(false);
-            var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
-            queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+            if (deltaToken != DateTimeOffset.UnixEpoch)
+            {
+                var deltaTokenFilter = new BinaryOperatorNode(BinaryOperatorKind.GreaterThan, new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), new ConstantNode(deltaToken));
+                queryDescription.Filter = queryDescription.Filter == null ? deltaTokenFilter : new BinaryOperatorNode(BinaryOperatorKind.And, queryDescription.Filter, deltaTokenFilter);
+            }
+
             queryDescription.IncludeTotalCount = true;
             queryDescription.Ordering.Add(new OrderByNode(new MemberAccessNode(null, SystemProperties.JsonUpdatedAtProperty), true));
             Dictionary<string, string> parameters = new()
@@ -544,7 +552,7 @@ namespace Microsoft.Datasync.Client.Offline
 
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
-            System.Diagnostics.Debug.WriteLine($"SyncContext.PullItemsAsync : table<{tableName}>.GetAyncItems start");
+            //System.Diagnostics.Debug.WriteLine($"SyncContext.PullItemsAsync : table<{tableName}>.GetAyncItems start");
             var enumerable = table.GetAsyncItems(odataString);
             System.Diagnostics.Debug.WriteLine($"SyncContext.PullItemsAsync : table<{tableName}>.GetAsyncItems elapsed [{stopwatch.ElapsedMilliseconds}] ");
             stopwatch.Stop();
@@ -662,18 +670,18 @@ namespace Microsoft.Datasync.Client.Offline
                 SendPullFinishedEvent(tableName, itemCount, true);
             }
 
-            System.Diagnostics.Debug.WriteLine($"SyncContext.Offline :  GARBAGE COLLECTION START");
-            stopwatch = Stopwatch.StartNew();
+            //System.Diagnostics.Debug.WriteLine($"SyncContext.Offline :  GARBAGE COLLECTION START");
+            //stopwatch = Stopwatch.StartNew();
             System.GC.Collect();
-            stopwatch.Stop();
-            System.Diagnostics.Debug.WriteLine($"SyncContext.Offline :  GARBAGE COLLECTION END [{stopwatch.ElapsedMilliseconds}]");
+            //stopwatch.Stop();
+            //System.Diagnostics.Debug.WriteLine($"SyncContext.Offline :  GARBAGE COLLECTION END [{stopwatch.ElapsedMilliseconds}]");
         }
 
         async Task<DateTimeOffset?> BatchUpsert(List<JObject> batchInserts, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken)
         {
             if (batchInserts.Any())
             {
-                System.Diagnostics.Debug.WriteLine($"SyncContext.BatchUpsert : [{tableName}] [{batchInserts.Count}] : start  [{Xamarin.Essentials.MainThread.IsMainThread}]");
+                //System.Diagnostics.Debug.WriteLine($"SyncContext.BatchUpsert : [{tableName}] [{batchInserts.Count}] : start  [{Xamarin.Essentials.MainThread.IsMainThread}]");
                 var stopwatch = new Stopwatch();
                 stopwatch.Start();
                 await OfflineStore.UpsertAsync(tableName, batchInserts, true, cancellationToken).ConfigureAwait(false);
@@ -682,7 +690,7 @@ namespace Microsoft.Datasync.Client.Offline
                 batchInserts.Clear();
                 if (batchUpdatedAt.HasValue)
                 {
-                    System.Diagnostics.Debug.WriteLine($"SyncContext.SetDeltaTokenAsync : [{tableName}] [{batchInserts.Count}] : start  [{Xamarin.Essentials.MainThread.IsMainThread}]");
+                    //System.Diagnostics.Debug.WriteLine($"SyncContext.SetDeltaTokenAsync : [{tableName}] [{batchInserts.Count}] : start  [{Xamarin.Essentials.MainThread.IsMainThread}]");
                     stopwatch.Restart();
                     await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken).ConfigureAwait(false);
                     stopwatch.Stop();

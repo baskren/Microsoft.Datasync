@@ -132,11 +132,11 @@ namespace Microsoft.Datasync.Client.Table
             PropertiesFrom(reader);
             reader.Close();
 
-            System.Diagnostics.Debug.WriteLine($"JsonReadablePage.ctr:  GARBAGE COLLECTION START");
-            var stopwatch = Stopwatch.StartNew();
+            //System.Diagnostics.Debug.WriteLine($"JsonReadablePage.ctr:  GARBAGE COLLECTION START");
+            //var stopwatch = Stopwatch.StartNew();
             System.GC.Collect();
-            stopwatch.Stop();
-            System.Diagnostics.Debug.WriteLine($"JsonReadablePage.ctr :  GARBAGE COLLECTION END [{stopwatch.ElapsedMilliseconds}]");
+            //stopwatch.Stop();
+            //System.Diagnostics.Debug.WriteLine($"JsonReadablePage.ctr :  GARBAGE COLLECTION END [{stopwatch.ElapsedMilliseconds}]");
         }
 
         public void PropertiesFrom(JsonReader reader)

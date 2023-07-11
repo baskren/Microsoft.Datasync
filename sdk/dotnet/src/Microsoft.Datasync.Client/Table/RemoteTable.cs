@@ -283,14 +283,14 @@ namespace Microsoft.Datasync.Client.Table
             };
 
             var stopWatch = new Stopwatch();
-            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : start");
+            //System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : start");
             stopWatch.Start();
             var reader = await SendRequestForJsonReaderAsync(request, cancellationToken).ConfigureAwait(false);
             //GC.Collect();
             stopWatch.Stop();
             System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : SendRequestAsync : elapsed [{stopWatch.ElapsedMilliseconds}]");
 
-            System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JsonReadablePage<T> : start");
+            //System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JsonReadablePage<T> : start");
             stopWatch.Restart();
             var result = new JsonReadablePage<T>(reader);
             stopWatch.Stop();
@@ -322,7 +322,7 @@ namespace Microsoft.Datasync.Client.Table
             {
 
                 var stopWatch = new Stopwatch();
-                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetJTokenFromResponse : start [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
+                //System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetJTokenFromResponse : start [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
                 stopWatch.Start();
                 JToken token = JsonConvert.DeserializeObject<JToken>(response.Content, ServiceClient.Serializer.SerializerSettings);
                 stopWatch.Stop();
@@ -348,14 +348,14 @@ namespace Microsoft.Datasync.Client.Table
             try
             {
                 var stopWatch = new Stopwatch();
-                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>:.SendRequestAsync : ServiceClient.HttpClient.SendAsync : start [{(Xamarin.Essentials.MainThread.IsMainThread?"IsMainThread":string.Empty)}] ");
+                //System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>:.SendRequestAsync : ServiceClient.HttpClient.SendAsync : start [{(Xamarin.Essentials.MainThread.IsMainThread?"IsMainThread":string.Empty)}] ");
                 stopWatch.Start();
                 var response = await ServiceClient.HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 stopWatch.Stop();
                 System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : ServiceClient.HttpClient.SendAsync : elapsed time [{stopWatch.ElapsedMilliseconds}] [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
                 stopWatch.Reset();
                 stopWatch.Start();
-                System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : GetJTokenFromResponse : start [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
+                //System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : GetJTokenFromResponse : start [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
                 var result = GetJTokenFromResponse(response);
                 stopWatch.Stop();
                 System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.SendRequestAsync : GetJTokenFromResponse : elapsed time [{stopWatch.ElapsedMilliseconds}] [{(Xamarin.Essentials.MainThread.IsMainThread ? "IsMainThread" : string.Empty)}]");
