@@ -359,7 +359,7 @@ namespace Microsoft.Datasync.Client.Offline
 
             var batchDeleteIds = new List<string>();
             var batchInserts = new List<T>();
-            DateTimeOffset? batchUpdatedAt = DateTimeOffset.MinValue;
+            DateTimeOffset batchUpdatedAt = DateTimeOffset.MinValue;
 
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
@@ -457,28 +457,28 @@ namespace Microsoft.Datasync.Client.Offline
 
 
 
-        async Task<DateTimeOffset?> BatchUpsert<T>(long itemCount, long expectedItems, List<T> batchInserts, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken) where T : IBaseModel, new()
+        async Task<DateTimeOffset> BatchUpsert<T>(long itemCount, long expectedItems, List<T> batchInserts, DateTimeOffset batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken) where T : IBaseModel, new()
         {
             if (batchInserts.Any())
             {
                 await OfflineStore.UpsertAsync(tableName, batchInserts, true, cancellationToken);//.ConfigureAwait(false);
-                if (batchUpdatedAt.HasValue)
-                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken);//.ConfigureAwait(false);
+                if (batchUpdatedAt > DateTimeOffset.UnixEpoch)
+                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt, cancellationToken);//.ConfigureAwait(false);
                 SendItemsWereStoredEvent(tableName, null, batchInserts, itemCount, expectedItems);
-                return null;
+                //return batchUpdatedAt;
             }
             return batchUpdatedAt;
         }
 
-        async Task<DateTimeOffset?> BatchDelete(long itemCount, long expectedItems, List<string> batchDeleteIds, DateTimeOffset? batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken) 
+        async Task<DateTimeOffset> BatchDelete(long itemCount, long expectedItems, List<string> batchDeleteIds, DateTimeOffset batchUpdatedAt, string tableName, string queryId, CancellationToken cancellationToken) 
         {
             if (batchDeleteIds.Any())
             {
                 await BatchDelete(batchDeleteIds, batchUpdatedAt, tableName, queryId, cancellationToken);
-                if (batchUpdatedAt.HasValue)
-                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt.Value, cancellationToken);//.ConfigureAwait(false);
+                if (batchUpdatedAt > DateTimeOffset.UnixEpoch)
+                    await DeltaTokenStore.SetDeltaTokenAsync(tableName, queryId, batchUpdatedAt, cancellationToken);//.ConfigureAwait(false);
                 SendItemsWereStoredEvent(tableName, batchDeleteIds, null, itemCount, expectedItems);
-                return null;
+                //return null;
             }
             return batchUpdatedAt;
         }

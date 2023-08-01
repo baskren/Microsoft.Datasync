@@ -15,8 +15,8 @@ namespace Microsoft.Datasync.Client.Query.OData
         /// <summary>
         /// The format of the date/time transition (in universal time).
         /// </summary>
-        //private const string DateTimeFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffZ";
-        private const string DateTimeFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fff zzz";
+        private const string DateTimeFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffZ";
+
 #if HAS_DATEONLY
         /// <summary>
         /// The format for the DateOnly type
