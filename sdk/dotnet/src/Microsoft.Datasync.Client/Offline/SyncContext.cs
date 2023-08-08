@@ -381,14 +381,14 @@ namespace Microsoft.Datasync.Client.Offline
                     if (string.IsNullOrWhiteSpace(instance.Id))
                     {
                         SendPullFinishedEvent(tableName, itemCount, false);
-                        throw new DatasyncInvalidOperationException($"Received an item without an ID : [{tableName}]");
+                        throw new DatasyncInvalidOperationException($"Received an item without an ID : [{tableName}] [{odataString}] [{instance}]");
                     }
 
                     var pendingOperation = await OperationsQueue.GetOperationByItemIdAsync(tableName, instance.Id, cancellationToken).ConfigureAwait(false);
                     if (pendingOperation != null)
                     {
                         SendPullFinishedEvent(tableName, itemCount, false);
-                        throw new InvalidOperationException($"Received an item for which there is a pending operation. : [{tableName}]");
+                        throw new InvalidOperationException($"Received an item for which there is a pending operation. : [{tableName}] [{odataString}] [{instance}]");
                     }
                     SendItemWillBeStoredEvent(tableName, instance.Id, instance, itemCount, expectedItems);
 
