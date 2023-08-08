@@ -72,7 +72,7 @@
 	<ItemGroup>
 	    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="P42.Serilog.QuickLog" Version="1.0.4" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.9.42" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.9.45" />
 		<PackageReference Include="P42.Utils" Version="1.0.7" />
 	</ItemGroup>
 
