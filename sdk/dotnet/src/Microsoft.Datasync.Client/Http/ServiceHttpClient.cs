@@ -158,7 +158,7 @@ namespace Microsoft.Datasync.Client.Http
             
             HttpResponseMessage response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-            //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] ENTER ==================");
+            System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] ENTER ==================");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -177,14 +177,14 @@ namespace Microsoft.Datasync.Client.Http
             {
                 if (!response.HasContent())
                 {
-                    /*
+                    
                     System.Diagnostics.Debug.WriteLine($"[{reqIndex}] NO CONTENT ");
                     System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
-                    */
+                    
                     throw new DatasyncInvalidOperationException("The server did not provide a response with the expected content.", request, response);
                 }
 
-                //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] HasContent: {response.HasContent()}  IsCompressed: {response.HasContent()}");
+                System.Diagnostics.Debug.WriteLine($"[{reqIndex}] HasContent: {response.HasContent()}  IsCompressed: {response.HasContent()}");
 
 
                 if (response.HasContent() && !response.IsCompressed())
@@ -192,22 +192,22 @@ namespace Microsoft.Datasync.Client.Http
                     long? contentLength = response.Content.Headers.ContentLength;
                     if (contentLength == null || contentLength <= 0)
                     {
-                        /*
+                        
                         System.Diagnostics.Debug.WriteLine($"[{reqIndex}] SERVER DID NOT PROVIDE EXPECTED CONTENT ");
                         var contentx = await response.Content?.ReadAsStringAsync();
                         System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {contentx}");
                         System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
-                        */
+                        
                         throw new DatasyncInvalidOperationException("The server did not provide a response with the expected content.", request, response);
                     }
                 }
             }
 
-            /*
+            
             //System.Diagnostics.Debug.WriteLine($"[{reqIndex}] CONTENT: {await response.Content.ReadAsStringAsync()}");
             System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : VALID RESPONSE");
             System.Diagnostics.Debug.WriteLine($"[{reqIndex}] ServiceHttpClient.SendAsync : ======================  RESPONSE [{reqIndex}] EXIT  ==================");
-            */
+            
             request.Dispose();
             return response;
 
