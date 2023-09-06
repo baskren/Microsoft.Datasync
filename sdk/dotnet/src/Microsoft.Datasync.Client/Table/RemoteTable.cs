@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All Rights Reserved.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using Microsoft.Datasync.Client.Http;
 using Microsoft.Datasync.Client.Query;
 using Microsoft.Datasync.Client.Query.OData;
@@ -8,14 +9,6 @@ using Microsoft.Datasync.Client.Serialization;
 using Microsoft.Datasync.Client.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using P42.Utils;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Microsoft.Datasync.Client.Table
 {
@@ -206,6 +199,8 @@ namespace Microsoft.Datasync.Client.Table
         protected async Task<Page<JToken>> GetNextPageAsync(string query = "", string requestUri = null, CancellationToken cancellationToken = default)
         {
             string queryString = string.IsNullOrEmpty(query) ? string.Empty : $"?{query.TrimStart('?').TrimEnd()}";
+            queryString = queryString.AssurePaginateQueryString();
+
             ServiceRequest request = new()
             {
                 Method = HttpMethod.Get,
@@ -259,14 +254,25 @@ namespace Microsoft.Datasync.Client.Table
             }
             stopWatch.Stop();
             System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JObject : elapsed [{stopWatch.ElapsedMilliseconds}]");
-            /*
-            else if (response is JArray array)
+
+            var requestedCount = request.UriPathAndQuery.CumalativeRecordsRequested();
+            if (requestedCount < result.Count)
             {
-                result.Items = array.ToList();
-                result.Count = array.Count;
-                //result.NextLink = array.Next;
+                if (requestUri == null)
+                {
+                    result.NextLink = new Uri(ServiceClient.HttpClient.Endpoint + TableEndpoint + queryString.NextPageQueryString());
+                }
+                else
+                {
+                    queryString = requestUri.Substring(requestUri.IndexOf('?'));
+                    queryString = queryString.NextPageQueryString();
+
+                    var leftPart = requestUri.Substring(0, requestUri.IndexOf('?'));
+                    result.NextLink = new Uri(leftPart + queryString);
+                }
             }
-            */
+
+
             return result;
         }
 
@@ -275,6 +281,8 @@ namespace Microsoft.Datasync.Client.Table
         protected async Task<JsonReadablePage<T>> GetNextPageAsync<T>(string query = "", string requestUri = null, CancellationToken cancellationToken = default) where T : IBaseModel, new()
         {
             string queryString = string.IsNullOrEmpty(query) ? string.Empty : $"?{query.TrimStart('?').TrimEnd()}";
+            queryString = queryString.AssurePaginateQueryString();
+
             ServiceRequest request = new()
             {
                 Method = HttpMethod.Get,
@@ -294,6 +302,25 @@ namespace Microsoft.Datasync.Client.Table
             stopWatch.Restart();
             var result = new JsonReadablePage<T>(reader);
             stopWatch.Stop();
+
+            var requestedCount = request.UriPathAndQuery.CumalativeRecordsRequested();
+            if (requestedCount < result.Count)
+            {
+                if (requestUri == null)
+                {
+                    result.NextLink = new Uri(ServiceClient.HttpClient.Endpoint + TableEndpoint + queryString.NextPageQueryString());
+                }
+                else
+                {
+                    queryString = requestUri.Substring(requestUri.IndexOf('?'));
+                    queryString = queryString.NextPageQueryString();
+
+                    var leftPart = requestUri.Substring(0, requestUri.IndexOf('?'));
+                    result.NextLink = new Uri(leftPart + queryString);
+                }
+            }
+            
+
             System.Diagnostics.Debug.WriteLine($"RemoteTable<{TableName}>.GetNextPageAsync : to JsonReadablePage<T> : elapsed [{stopWatch.ElapsedMilliseconds}]");
 
             return result;

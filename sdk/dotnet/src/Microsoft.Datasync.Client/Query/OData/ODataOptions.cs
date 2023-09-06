@@ -6,7 +6,7 @@ namespace Microsoft.Datasync.Client.Query.OData
     /// <summary>
     /// The list of OData query parameters used to construct an OData query string.
     /// </summary>
-    internal static class ODataOptions
+    public static class ODataOptions
     {
         public const string Filter = "$filter";
         public const string OrderBy = "$orderby";
@@ -14,6 +14,8 @@ namespace Microsoft.Datasync.Client.Query.OData
         public const string Top = "$top";
         public const string Select = "$select";
         public const string InlineCount = "$count";
+
+        public const int DefaultTopValue = 7500;
 
         /// <summary>
         /// The query parameter used to include deleted items.  This is an OData
