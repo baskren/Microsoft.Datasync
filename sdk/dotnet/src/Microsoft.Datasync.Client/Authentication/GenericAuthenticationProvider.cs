@@ -17,6 +17,8 @@ namespace Microsoft.Datasync.Client
     /// </summary>
     public class GenericAuthenticationProvider : AuthenticationProvider
     {
+        public static GenericAuthenticationProvider Instance;
+
         /// <summary>
         /// Creates a new <see cref="GenericAuthenticationProvider"/> by specifying a function for the token requester.
         /// </summary>

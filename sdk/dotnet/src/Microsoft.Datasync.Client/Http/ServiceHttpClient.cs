@@ -227,7 +227,7 @@ namespace Microsoft.Datasync.Client.Http
 
             string responseContent = !response.HasContent() ? null : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             string message = GetErrorMessageFromBody(responseContent) ?? $"The request could not be completed ({response.ReasonPhrase})";
-            return new DatasyncInvalidOperationException($"{response?.StatusCode.ToString()??"no-status-code"}:{message}  Request:{request.RequestUri}", request, response);
+            return new DatasyncInvalidOperationException($"{response?.StatusCode.ToString()??"no-status-code"}:{message}  \n Request:{request.RequestUri} \n Token.ExpiresOn:{GenericAuthenticationProvider.Instance?.Current?.ExpiresOn} \n Token.DisplayName:{GenericAuthenticationProvider.Instance?.Current?.DisplayName}\n Token.UserId:{GenericAuthenticationProvider.Instance?.Current?.UserId}", request, response);
         }
 
         /// <summary>
