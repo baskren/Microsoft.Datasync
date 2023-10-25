@@ -227,7 +227,23 @@ namespace Microsoft.Datasync.Client.Http
 
             string responseContent = !response.HasContent() ? null : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             string message = GetErrorMessageFromBody(responseContent) ?? $"The request could not be completed ({response.ReasonPhrase})";
-            return new DatasyncInvalidOperationException($"{response?.StatusCode.ToString()??"no-status-code"}:{message}  \n Request:{request.RequestUri} \n Token.ExpiresOn:{GenericAuthenticationProvider.Instance?.Current?.ExpiresOn} \n Token.DisplayName:{GenericAuthenticationProvider.Instance?.Current?.DisplayName}\n Token.UserId:{GenericAuthenticationProvider.Instance?.Current?.UserId}", request, response);
+            var exceptionMesssage = $"{response?.StatusCode.ToString() ?? "no-status-code"}:{message}  " +
+                $"\n Request:{request.RequestUri} " +
+                $"\n GenericAuthenticationProvider.Instance:{GenericAuthenticationProvider.Instance} " +
+                $"\n GenericAuthenticationProvider.Instance?.IsLoggedIn:{GenericAuthenticationProvider.Instance?.IsLoggedIn} " +
+                $"\n GenericAuthenticationProvider.Instance?.HeaderName:{GenericAuthenticationProvider.Instance?.HeaderName} " +
+                $"\n GenericAuthenticationProvider.Instance?.AuthenticationType:{GenericAuthenticationProvider.Instance?.AuthenticationType} " +
+                $"\n GenericAuthenticationProvider.Instance?.TokenRequestorAsync:{GenericAuthenticationProvider.Instance?.TokenRequestorAsync} " +
+                $"\n GenericAuthenticationProvider.Instance?.RefreshBufferTimeSpan:{GenericAuthenticationProvider.Instance?.RefreshBufferTimeSpan} " +
+                $"\n GenericAuthenticationProvider.Instance?.UserId:{GenericAuthenticationProvider.Instance?.DisplayName} " +
+                $"\n GenericAuthenticationProvider.Instance?.UserId:{GenericAuthenticationProvider.Instance?.UserId} " +
+                $"\n GenericAuthenticationProvider.Instance?.Current:{GenericAuthenticationProvider.Instance?.Current} " +
+                $"\n GenericAuthenticationProvider.Instance?.IsExpired(...Current):{GenericAuthenticationProvider.Instance?.IsExpired(GenericAuthenticationProvider.Instance?.Current)} " +
+                $"\n GenericAuthenticationProvider.Instance?.Current?.ExpiresOn:{GenericAuthenticationProvider.Instance?.Current?.ExpiresOn} " +
+                $"\n GenericAuthenticationProvider.Instance?.Current?.UserId:{GenericAuthenticationProvider.Instance?.Current?.UserId} " +
+                $"\n GenericAuthenticationProvider.Instance?.Current?.DisplayName:{GenericAuthenticationProvider.Instance?.Current?.DisplayName} " +
+                $"\n GenericAuthenticationProvider.Instance?.Current?.Token:{GenericAuthenticationProvider.Instance?.Current?.Token} ";
+            return new DatasyncInvalidOperationException(exceptionMesssage, request, response);
         }
 
         /// <summary>
