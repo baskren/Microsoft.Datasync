@@ -29,6 +29,8 @@ namespace Microsoft.Datasync.Client.Http
         /// </summary>
         protected HttpMessageHandler roothandler;
 
+        public AuthenticationProvider AuthenticationProvider { get; private set; }
+
         /// <summary>
         /// The <see cref="HttpClient"/> to use for communication.
         /// </summary>
@@ -67,6 +69,7 @@ namespace Microsoft.Datasync.Client.Http
             roothandler = CreatePipeline(clientOptions.HttpPipeline ?? Array.Empty<HttpMessageHandler>());
             if (authenticationProvider != null)
             {
+                AuthenticationProvider = authenticationProvider;
                 authenticationProvider.InnerHandler = roothandler;
                 roothandler = authenticationProvider;
             }
@@ -220,7 +223,7 @@ namespace Microsoft.Datasync.Client.Http
         /// <param name="response">The response.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
         /// <returns>The exception to throw.</returns>
-        private static async Task<Exception> ThrowInvalidResponseAsync(HttpRequestMessage request, HttpResponseMessage response, CancellationToken cancellationToken = default)
+        private async Task<Exception> ThrowInvalidResponseAsync(HttpRequestMessage request, HttpResponseMessage response, CancellationToken cancellationToken = default)
         {
             Arguments.IsNotNull(request, nameof(request));
             Arguments.IsNotNull(response, nameof(response));
@@ -229,20 +232,19 @@ namespace Microsoft.Datasync.Client.Http
             string message = GetErrorMessageFromBody(responseContent) ?? $"The request could not be completed ({response.ReasonPhrase})";
             var exceptionMesssage = $"{response?.StatusCode.ToString() ?? "no-status-code"}:{message}  " +
                 $"\n Request:{request.RequestUri} " +
-                $"\n GenericAuthenticationProvider.Instance:{GenericAuthenticationProvider.Instance} " +
-                $"\n GenericAuthenticationProvider.Instance?.IsLoggedIn:{GenericAuthenticationProvider.Instance?.IsLoggedIn} " +
-                $"\n GenericAuthenticationProvider.Instance?.HeaderName:{GenericAuthenticationProvider.Instance?.HeaderName} " +
-                $"\n GenericAuthenticationProvider.Instance?.AuthenticationType:{GenericAuthenticationProvider.Instance?.AuthenticationType} " +
-                $"\n GenericAuthenticationProvider.Instance?.TokenRequestorAsync:{GenericAuthenticationProvider.Instance?.TokenRequestorAsync} " +
-                $"\n GenericAuthenticationProvider.Instance?.RefreshBufferTimeSpan:{GenericAuthenticationProvider.Instance?.RefreshBufferTimeSpan} " +
-                $"\n GenericAuthenticationProvider.Instance?.UserId:{GenericAuthenticationProvider.Instance?.DisplayName} " +
-                $"\n GenericAuthenticationProvider.Instance?.UserId:{GenericAuthenticationProvider.Instance?.UserId} " +
-                $"\n GenericAuthenticationProvider.Instance?.Current:{GenericAuthenticationProvider.Instance?.Current} " +
-                $"\n GenericAuthenticationProvider.Instance?.IsExpired(...Current):{GenericAuthenticationProvider.Instance?.IsExpired(GenericAuthenticationProvider.Instance?.Current)} " +
-                $"\n GenericAuthenticationProvider.Instance?.Current?.ExpiresOn:{GenericAuthenticationProvider.Instance?.Current?.ExpiresOn} " +
-                $"\n GenericAuthenticationProvider.Instance?.Current?.UserId:{GenericAuthenticationProvider.Instance?.Current?.UserId} " +
-                $"\n GenericAuthenticationProvider.Instance?.Current?.DisplayName:{GenericAuthenticationProvider.Instance?.Current?.DisplayName} " +
-                $"\n GenericAuthenticationProvider.Instance?.Current?.Token:{GenericAuthenticationProvider.Instance?.Current?.Token} ";
+                $"\n AuthenticationProvider:{AuthenticationProvider} " +
+                $"\n AuthenticationProvider.DisplayName:{AuthenticationProvider.DisplayName} " +
+                $"\n AuthenticationProvider.IsLoggedIn:{AuthenticationProvider.IsLoggedIn} " +
+                $"\n AuthenticationProvider.UserId:{AuthenticationProvider.UserId} ";
+
+            if (AuthenticationProvider is GenericAuthenticationProvider generic)
+            {
+                //var token = await generic.GetTokenAsync();
+                exceptionMesssage += 
+                $"\n AuthenticationProvider.AuthenticationType:{generic.AuthenticationType} " +
+                $"\n AuthenticationProvider.RefreshBufferTimeSpan:{generic.RefreshBufferTimeSpan.TotalMinutes}min ";
+
+            }
             return new DatasyncInvalidOperationException(exceptionMesssage, request, response);
         }
 

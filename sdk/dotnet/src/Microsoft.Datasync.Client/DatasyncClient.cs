@@ -147,7 +147,7 @@ namespace Microsoft.Datasync.Client
         /// <summary>
         /// Gets the <see cref="ServiceHttpClient"/> associated with the Azure Mobile App.
         /// </summary>
-        internal ServiceHttpClient HttpClient { get; }
+        public ServiceHttpClient HttpClient { get; }
 
         /// <summary>
         /// The id used to identify this installation of the application to
