@@ -6,7 +6,6 @@
 		-->
 		<TargetFrameworks>net7.0;net7.0-android</TargetFrameworks>
 		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.19041.0;$(TargetFrameworks)</TargetFrameworks>
-		<TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">net7.0-ios;$(TargetFrameworks)</TargetFrameworks>
 	    <GenerateLibraryLayout>true</GenerateLibraryLayout>
 		<Nullable>disable</Nullable>
 	</PropertyGroup>
@@ -75,8 +74,8 @@
 	<!-- Common package requirements -->
 	<ItemGroup>
 	    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="P42.Serilog.QuickLog" Version="1.0.4" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="4.9.45" />
+		<PackageReference Include="P42.Serilog.QuickLog" Version="1.0.7" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="5.0.48" />
 		<PackageReference Include="P42.Utils" Version="1.0.7" />
 	</ItemGroup>
 
