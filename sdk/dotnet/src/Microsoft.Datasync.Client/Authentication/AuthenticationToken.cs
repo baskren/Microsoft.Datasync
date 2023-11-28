@@ -10,6 +10,8 @@ namespace Microsoft.Datasync.Client
     /// </summary>
     public struct AuthenticationToken
     {
+        public DateTimeOffset Granted { get; set; }
+
         /// <summary>
         /// The display name for this user.
         /// </summary>
