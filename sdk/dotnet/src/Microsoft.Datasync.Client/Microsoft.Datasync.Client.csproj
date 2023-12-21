@@ -74,9 +74,9 @@
 	<!-- Common package requirements -->
 	<ItemGroup>
 	    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="P42.Serilog.QuickLog" Version="1.0.7" />
-		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="5.0.48" />
-		<PackageReference Include="P42.Utils" Version="1.0.7" />
+		<PackageReference Include="P42.Serilog.QuickLog" Version="1.0.8" />
+		<PackageReference Include="P42.Uno.Xamarin.Essentials" Version="5.0.64" />
+		<PackageReference Include="P42.Utils" Version="1.0.8" />
 	</ItemGroup>
 
 </Project>
