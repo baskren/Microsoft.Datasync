@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+		<TargetFrameworks>net7.0;net7.0-android;net7.0-ios;net8.0;net8.0-android;net8.0-ios</TargetFrameworks>
+		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.19041.0;net8.0-windows10.0.19041.0;$(TargetFrameworks)</TargetFrameworks>
+    <!--
+    <TargetFrameworks>net7.0;net8.0</TargetFrameworks>
+		<TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net7.0-windows10.0.19041.0;$(TargetFrameworks)</TargetFrameworks>
+    -->
+		<Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+		<Version>1.0.0.0</Version>
+    <Description>An offline store for the Microsoft Datasync Framework built on SQLite.  Formally known as Azure Mobile Apps</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageTags>azure;mobile;datasync;microsoft</PackageTags>
+    <Product>$(AssemblyName) ($(TargetFramework))</Product>
+	  <EmbedUntrackedSources>true</EmbedUntrackedSources>
+	  <IncludeSymbols>true</IncludeSymbols>
+	  <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <Import Project="..\..\Shared.Build.props" />
+
+  <PropertyGroup>
+    <DebugType>portable</DebugType>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <NeutralLanguage>en-US</NeutralLanguage>
+
+	  <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally> 
+
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Datasync.Client\P42.Microsoft.Datasync.Client.csproj" />
+  </ItemGroup>
+
+</Project>
